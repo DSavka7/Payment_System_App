@@ -46,7 +46,7 @@ class Database:
                 name="unique_user_card"
             )
 
-            # Звичайні індекси — використовуємо background=True і try/except для безпеки
+
             indexes = [
                 ("users", "role", "idx_user_role"),
                 ("accounts", "user_id", "idx_account_user"),

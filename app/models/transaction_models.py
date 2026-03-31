@@ -1,6 +1,7 @@
+
 from pydantic import BaseModel, Field
 from datetime import datetime
-from typing import Optional
+from typing import Optional, List
 
 
 class TransactionBase(BaseModel):
@@ -9,9 +10,15 @@ class TransactionBase(BaseModel):
     amount: float = Field(..., gt=0)
     currency: str = Field(..., pattern=r"^(UAH|USD|EUR)$")
     type: str = Field(..., pattern=r"^(transfer|payment|income)$")
-    category: str
-    merchant_name: Optional[str] = None
-    description: Optional[str] = None
+    category: str = Field(..., min_length=1, max_length=100)
+    merchant_name: Optional[str] = Field(None, max_length=200)
+    description: Optional[str] = Field(None, max_length=500)
+
+
+class TransferCreate(BaseModel):
+    to_account_id: str
+    amount: float = Field(..., gt=0)
+    description: Optional[str] = Field(None, max_length=500)
 
 
 class TransactionCreate(TransactionBase):
@@ -33,3 +40,11 @@ class TransactionResponse(TransactionBase):
 
     class Config:
         from_attributes = True
+
+
+class PaginatedTransactions(BaseModel):
+    items: List[TransactionResponse]
+    total: int
+    limit: int
+    offset: int
+    has_more: bool
