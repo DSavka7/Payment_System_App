@@ -1,0 +1,196 @@
+
+/* ── Dashboard ────────────────────────────────────── */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  margin-bottom: 36px;
+}
+
+.cards-row {
+  display: flex;
+  gap: 16px;
+  overflow-x: auto;
+  padding-bottom: 8px;
+  margin-bottom: 36px;
+  scrollbar-width: thin;
+}
+.cards-row::-webkit-scrollbar { height: 4px; }
+.cards-row::-webkit-scrollbar-thumb { background: var(--ink-3); border-radius: 99px; }
+
+.tx-list {
+  background: var(--ink-1);
+  border: 1px solid var(--ink-3);
+  border-radius: var(--radius-md);
+  padding: 8px 20px;
+}
+
+/* ── Accounts ─────────────────────────────────────── */
+.accounts-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 20px;
+}
+
+/* Full-width bank card for grid */
+.accounts-grid .bank-card {
+  min-width: unset;
+  max-width: unset;
+}
+
+/* ── Transfer ─────────────────────────────────────── */
+.transfer-container {
+  display: flex;
+  justify-content: center;
+  padding-top: 20px;
+}
+.transfer-card {
+  background: var(--ink-1);
+  border: 1px solid var(--ink-3);
+  border-radius: var(--radius-lg);
+  padding: 36px;
+  width: 100%;
+  max-width: 480px;
+  box-shadow: var(--shadow-card);
+  position: relative;
+  overflow: hidden;
+}
+.transfer-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--gold) 0%, var(--gold-light) 50%, var(--gold) 100%);
+}
+.transfer-card__title {
+  font-family: var(--font-display);
+  font-size: 1.6rem;
+  font-weight: 400;
+  color: var(--white);
+  margin-bottom: 4px;
+}
+.transfer-card__sub {
+  font-size: .75rem;
+  letter-spacing: .08em;
+  color: var(--silver);
+  margin-bottom: 28px;
+}
+.transfer-arrow {
+  display: flex;
+  justify-content: center;
+  color: var(--gold);
+  opacity: .5;
+  margin: -4px 0;
+}
+.transfer-arrow svg { width: 20px; height: 20px; }
+
+/* ── Transactions page ────────────────────────────── */
+.tx-amount--out { color: var(--red);   font-family: var(--font-mono); }
+.tx-amount--in  { color: var(--green); font-family: var(--font-mono); }
+.tx-date-cell   { font-family: var(--font-mono); font-size: .78rem; color: var(--silver); white-space: nowrap; }
+
+/* ── Requests ─────────────────────────────────────── */
+.requests-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* ── Responsive ───────────────────────────────────── */
+@media (max-width: 768px) {
+  :root { --sidebar-w: 0px; }
+
+  .sidebar {
+    width: 200px;
+    transform: translateX(-100%);
+    transition: transform var(--t-base);
+  }
+  .sidebar.open { transform: translateX(0); }
+
+  .main-content { margin-left: 0; }
+  .page { padding: 20px 16px 40px; }
+  .topbar { padding: 0 16px; }
+
+  .transfer-card { padding: 24px 20px; }
+  .stats-grid { grid-template-columns: 1fr; }
+}
+
+/* ── Transaction Tabs ─────────────────────────────── */
+.tx-tab-bar {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+
+.tx-tab {
+  background: var(--ink-1);
+  border: 1px solid var(--ink-3);
+  border-radius: var(--radius-sm);
+  color: var(--silver);
+  padding: 7px 16px;
+  font-size: .8rem;
+  font-family: var(--font-mono);
+  cursor: pointer;
+  transition: all var(--t-fast);
+  white-space: nowrap;
+}
+.tx-tab:hover {
+  border-color: var(--gold);
+  color: var(--gold);
+}
+.tx-tab--active {
+  background: var(--gold-dim);
+  border-color: var(--gold);
+  color: var(--gold);
+  font-weight: 500;
+}
+
+/* ── Transaction Summary Cards ────────────────────── */
+.tx-summary {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.tx-summary__card {
+  background: var(--ink-1);
+  border: 1px solid var(--ink-3);
+  border-radius: var(--radius-md);
+  padding: 16px 20px;
+  position: relative;
+  overflow: hidden;
+}
+.tx-summary__card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: var(--ink-3);
+}
+.tx-summary__card--income::before { background: var(--green); }
+.tx-summary__card--outcome::before { background: var(--red); }
+
+.tx-summary__label {
+  font-size: .72rem;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+  color: var(--silver);
+  margin-bottom: 8px;
+}
+.tx-summary__value {
+  font-family: var(--font-display);
+  font-size: 1.4rem;
+  font-weight: 300;
+  color: var(--white);
+}
+.tx-summary__card--income .tx-summary__value  { color: var(--green); }
+.tx-summary__card--outcome .tx-summary__value { color: var(--red); }
+
+@media (max-width: 600px) {
+  .tx-summary { grid-template-columns: 1fr 1fr; }
+  .tx-summary__card:last-child { grid-column: 1 / -1; }
+  .tx-tab-bar { gap: 4px; }
+  .tx-tab { padding: 6px 10px; font-size: .72rem; }
+}

@@ -1,33 +1,37 @@
 version: "3.9"
 
 services:
-  app:
-    build: app
-    container_name: payment_system_app
-    ports:
-      - "8000:8000"
-    env_file:
-      - .env
-    depends_on:
-      mongodb:
-        condition: service_healthy
-    restart: unless-stopped
-
-  mongodb:
+  # ── MongoDB ────────────────────────────────────────────────────────────────
+  mongo:
     image: mongo:7
-    container_name: payment_system_mongo
+    container_name: payment_mongo
+    restart: unless-stopped
     ports:
       - "27017:27017"
     volumes:
       - mongo_data:/data/db
-    healthcheck:
-      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 10s
+    environment:
+      MONGO_INITDB_DATABASE: bank_db
+
+  # ── FastAPI застосунок ─────────────────────────────────────────────────────
+  api:
+    build: .
+    container_name: payment_api
     restart: unless-stopped
+    ports:
+      - "8000:8000"
+    depends_on:
+      - mongo
+    environment:
+      MONGODB_URL: mongodb://mongo:27017
+      MONGODB_DB_NAME: bank_db
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-change_me_in_production}
+      JWT_ALGORITHM: HS256
+      ACCESS_TOKEN_EXPIRE_MINUTES: 30
+      REFRESH_TOKEN_EXPIRE_DAYS: 7
+      APP_LANGUAGE: uk
+    volumes:
+      - ./app:/app/app
 
 volumes:
   mongo_data:
-    driver: local

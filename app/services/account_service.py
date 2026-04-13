@@ -1,126 +1,149 @@
-import logging
+
+from typing import List
+
 from fastapi import Depends
 from motor.motor_asyncio import AsyncIOMotorDatabase
-from typing import List, Dict
 
-from app.repositories.account_repository import AccountRepository
-from app.models.account_models import AccountCreate, AccountResponse, AccountUpdate
+from app.core.constants import ACCOUNT_STATUS_ACTIVE
 from app.core.exceptions import (
-    AccountNotFound,
-    InvalidAccountOwnership,
     AccountBlocked,
-    AccountAlreadyBlocked,
-    AccountAlreadyActive,
+    AccountNotFound,
+    CurrencyMismatch,
+    InsufficientFunds,
+    SelfTransferNotAllowed,
 )
+from app.core.logging_config import get_logger
 from app.db.database import get_db
+from app.models.account_models import (
+    AccountCreate,
+    AccountResponse,
+    AccountUpdate,
+    TransferRequest,
+)
+from app.models.transaction_models import TransactionCreate, TransactionResponse
+from app.repositories.account_repository import AccountRepository
+from app.repositories.transaction_repository import TransactionRepository
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class AccountService:
-    """Сервісний шар для операцій над банківськими рахунками."""
 
-    def __init__(self, repo: AccountRepository):
-        self.repo = repo
+    def __init__(
+        self,
+        account_repo: AccountRepository,
+        tx_repo: TransactionRepository,
+    ) -> None:
+        self.account_repo = account_repo
+        self.tx_repo = tx_repo
 
-    async def create_account(self, user_id: str, account: AccountCreate) -> AccountResponse:
-        account_in_db = await self.repo.create(user_id, account)
-        logger.info("Користувач %s створив рахунок %s", user_id, account_in_db.id)
+    async def create_account(self, account: AccountCreate) -> AccountResponse:
+        """Створює новий банківський рахунок."""
+        account_in_db = await self.account_repo.create(account)
         return AccountResponse.model_validate(account_in_db.model_dump())
 
-    async def get_account(
-        self, account_id: str, requester_id: str, requester_role: str
-    ) -> AccountResponse:
-        account = await self.repo.get_by_id(account_id)
+    async def get_account(self, account_id: str) -> AccountResponse:
+        """Повертає рахунок за ID."""
+        account = await self.account_repo.get_by_id(account_id)
         if not account:
             raise AccountNotFound()
-        if requester_role != "ADMIN" and account.user_id != requester_id:
-            raise InvalidAccountOwnership()
         return AccountResponse.model_validate(account.model_dump())
 
-    async def get_my_accounts(self, user_id: str) -> List[AccountResponse]:
-        """Повертає всі рахунки поточного авторизованого користувача."""
-        accounts = await self.repo.get_by_user_id(user_id)
+    async def get_user_accounts(self, user_id: str) -> List[AccountResponse]:
+        """Повертає всі рахунки користувача."""
+        accounts = await self.account_repo.get_by_user_id(user_id)
         return [AccountResponse.model_validate(a.model_dump()) for a in accounts]
-
-    async def get_user_accounts_admin(self, user_id: str) -> List[AccountResponse]:
-        """Адмін отримує рахунки будь-якого користувача за user_id."""
-        accounts = await self.repo.get_by_user_id(user_id)
-        return [AccountResponse.model_validate(a.model_dump()) for a in accounts]
-
-    async def get_all_accounts(self, limit: int, offset: int) -> Dict:
-        """Адмін: пагінований список усіх рахунків."""
-        accounts = await self.repo.get_all(limit=limit, offset=offset)
-        total = await self.repo.count()
-        return {
-            "items": [AccountResponse.model_validate(a.model_dump()) for a in accounts],
-            "total": total,
-            "limit": limit,
-            "offset": offset,
-            "has_more": (offset + limit) < total,
-        }
-
-    # ─── Блокування користувачем (self-block) ─────────────────────────────────
-
-    async def self_block_account(self, account_id: str, user_id: str) -> AccountResponse:
-
-        account = await self.repo.get_by_id(account_id)
-        if not account:
-            raise AccountNotFound()
-        if account.user_id != user_id:
-            raise InvalidAccountOwnership()
-        if account.status == "blocked":
-            raise AccountAlreadyBlocked()
-
-        updated = await self.repo.update(account_id, AccountUpdate(status="blocked"))
-        logger.info(
-            "Користувач %s самостійно заблокував рахунок %s", user_id, account_id
-        )
-        return AccountResponse.model_validate(updated.model_dump())
-
-    # ─── Управління адміністратором ────────────────────────────────────────────
-
-    async def block_account(self, account_id: str) -> AccountResponse:
-
-        account = await self.repo.get_by_id(account_id)
-        if not account:
-            raise AccountNotFound()
-        if account.status == "blocked":
-            raise AccountAlreadyBlocked()
-
-        updated = await self.repo.update(account_id, AccountUpdate(status="blocked"))
-        logger.info("Адмін заблокував рахунок %s", account_id)
-        return AccountResponse.model_validate(updated.model_dump())
-
-    async def unblock_account(self, account_id: str) -> AccountResponse:
-
-        account = await self.repo.get_by_id(account_id)
-        if not account:
-            raise AccountNotFound()
-        if account.status == "active":
-            raise AccountAlreadyActive()
-
-        updated = await self.repo.update(account_id, AccountUpdate(status="active"))
-        logger.info("Адмін розблокував рахунок %s", account_id)
-        return AccountResponse.model_validate(updated.model_dump())
 
     async def update_account(
         self, account_id: str, update_data: AccountUpdate
     ) -> AccountResponse:
-        """Адмін оновлює параметри рахунку (ліміт, баланс)."""
-        account = await self.repo.update(account_id, update_data)
+        account = await self.account_repo.update(account_id, update_data)
         if not account:
             raise AccountNotFound()
         return AccountResponse.model_validate(account.model_dump())
 
+    async def delete_account(self, account_id: str) -> dict:
+        deleted = await self.account_repo.delete(account_id)
+        if not deleted:
+            raise AccountNotFound()
+        return {"detail": "Рахунок видалено / Account deleted"}
 
-# ─── Dependency Injection ──────────────────────────────────────────────────────
+    async def transfer(
+        self, transfer: TransferRequest
+    ) -> TransactionResponse:
+        # ── Завантаження рахунків ────────────────────────────────────────────
+        from_account = await self.account_repo.get_by_id(transfer.from_account_id)
+        if not from_account:
+            raise AccountNotFound()
+
+        to_account = await self.account_repo.get_by_id(transfer.to_account_id)
+        if not to_account:
+            raise AccountNotFound()
+
+        # ── Бізнес-перевірки ─────────────────────────────────────────────────
+        if transfer.from_account_id == transfer.to_account_id:
+            raise SelfTransferNotAllowed()
+
+        if from_account.status != ACCOUNT_STATUS_ACTIVE:
+            raise AccountBlocked()
+
+        if to_account.status != ACCOUNT_STATUS_ACTIVE:
+            raise AccountBlocked()
+
+        if from_account.currency != to_account.currency:
+            raise CurrencyMismatch()
+
+        if from_account.balance < transfer.amount:
+            raise InsufficientFunds()
+
+        # ── Оновлення балансів ────────────────────────────────────────────────
+        await self.account_repo.update_balance(
+            transfer.from_account_id,
+            round(from_account.balance - transfer.amount, 2),
+        )
+        await self.account_repo.update_balance(
+            transfer.to_account_id,
+            round(to_account.balance + transfer.amount, 2),
+        )
+
+        # ── Запис транзакцій ──────────────────────────────────────────────────
+        tx = await self.tx_repo.create(
+            TransactionCreate(
+                from_account_id=transfer.from_account_id,
+                to_account_id=transfer.to_account_id,
+                amount=transfer.amount,
+                currency=from_account.currency,
+                type="transfer",
+                category="transfer",
+                description=transfer.description,
+                is_income=False,
+            )
+        )
+
+        logger.info(
+            "Переказ виконано: %s → %s | %.2f %s",
+            transfer.from_account_id,
+            transfer.to_account_id,
+            transfer.amount,
+            from_account.currency,
+        )
+        return TransactionResponse.model_validate(tx.model_dump())
+
+
+# ── Dependency Injection ───────────────────────────────────────────────────────
 
 def get_account_repository(db: AsyncIOMotorDatabase = Depends(get_db)) -> AccountRepository:
     return AccountRepository(db.accounts)
 
 
+def get_transaction_repository_for_account(
+    db: AsyncIOMotorDatabase = Depends(get_db),
+) -> TransactionRepository:
+    return TransactionRepository(db.transactions)
+
+
 def get_account_service(
-    repo: AccountRepository = Depends(get_account_repository),
+    account_repo: AccountRepository = Depends(get_account_repository),
+    tx_repo: TransactionRepository = Depends(get_transaction_repository_for_account),
 ) -> AccountService:
-    return AccountService(repo)
+    return AccountService(account_repo, tx_repo)

@@ -1,21 +1,28 @@
-from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
+
 import pymongo
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
 from typing import AsyncGenerator
 
+from fastapi import FastAPI
+from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
+
 from app.core.config import settings
+from app.core.logging_config import get_logger
+
+logger = get_logger(__name__)
 
 
 class Database:
+
     client: AsyncIOMotorClient
     db: AsyncIOMotorDatabase
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.client = AsyncIOMotorClient(settings.mongodb_url)
         self.db = self.client[settings.mongodb_db_name]
 
-    # ==================== Властивості для зручного доступу ====================
+    # ── Колекції ──────────────────────────────────────────────────────────────
+
     @property
     def users(self):
         return self.db.users
@@ -32,80 +39,95 @@ class Database:
     def requests(self):
         return self.db.requests
 
-    # ==================== Безпечне створення індексів ====================
-    async def create_indexes(self):
+    @property
+    def refresh_tokens(self):
+        return self.db.refresh_tokens
 
-        print("Початок створення/перевірки індексів у MongoDB...")
+    # ── Індекси ───────────────────────────────────────────────────────────────
+
+    async def create_indexes(self) -> None:
+        logger.info("Перевірка/створення індексів MongoDB...")
 
         try:
-            # Унікальні індекси (з dropDuplicates=False за замовчуванням)
             await self.users.create_index("email", unique=True, name="unique_email")
             await self.accounts.create_index(
                 [("user_id", pymongo.ASCENDING), ("card_number", pymongo.ASCENDING)],
                 unique=True,
-                name="unique_user_card"
+                name="unique_user_card",
             )
 
-
-            indexes = [
+            simple_indexes = [
                 ("users", "role", "idx_user_role"),
+                ("users", "status", "idx_user_status"),
                 ("accounts", "user_id", "idx_account_user"),
                 ("accounts", "status", "idx_account_status"),
-                ("transactions", "created_at", "idx_transaction_date"),
-                ("transactions", "from_account_id", "idx_from_account"),
-                ("transactions", "to_account_id", "idx_to_account"),
-                ("requests", [("user_id", pymongo.ASCENDING), ("status", pymongo.ASCENDING)], "idx_request_user_status"),
-                ("requests", "created_at", "idx_request_date"),
+                ("transactions", "created_at", "idx_tx_date"),
+                ("transactions", "from_account_id", "idx_tx_from"),
+                ("transactions", "to_account_id", "idx_tx_to"),
+                ("requests", "created_at", "idx_req_date"),
             ]
 
-            for collection_name, key, name in indexes:
-                collection = getattr(self, collection_name)
+            compound_indexes = [
+                (
+                    "requests",
+                    [("user_id", pymongo.ASCENDING), ("status", pymongo.ASCENDING)],
+                    "idx_req_user_status",
+                ),
+            ]
+
+            for col_name, key, name in simple_indexes:
+                col = getattr(self, col_name)
                 try:
-                    if isinstance(key, list):
-                        await collection.create_index(key, name=name, background=True)
+                    await col.create_index(key, name=name, background=True)
+                except Exception as exc:
+                    if "already exists" in str(exc) or "IndexOptionsConflict" in str(exc):
+                        logger.debug("Індекс %s вже існує — пропуск", name)
                     else:
-                        await collection.create_index(key, name=name, background=True)
-                except Exception as e:
-                    if "IndexOptionsConflict" in str(e) or "already exists" in str(e):
-                        print(f"   ⏭ Індекс {name} вже існує з іншою назвою — пропускаємо")
-                    else:
-                        print(f"   Помилка при створенні індексу {name}: {e}")
+                        logger.warning("Помилка індексу %s: %s", name, exc)
 
-            print("Індекси успішно перевірені / створені")
+            for col_name, key, name in compound_indexes:
+                col = getattr(self, col_name)
+                try:
+                    await col.create_index(key, name=name, background=True)
+                except Exception as exc:
+                    logger.warning("Помилка складеного індексу %s: %s", name, exc)
 
-        except Exception as e:
-            print(f"Загальна помилка при створенні індексів: {e}")
+            logger.info("Індекси успішно перевірені / створені")
 
-    async def close(self):
+        except Exception as exc:
+            logger.error("Критична помилка при створенні індексів: %s", exc)
+            raise
 
+    async def close(self) -> None:
         if self.client:
             self.client.close()
+            logger.info("Підключення до MongoDB закрито")
 
 
-# Глобальний екземпляр
+# ── Глобальний singleton ───────────────────────────────────────────────────────
 db = Database()
 
 
-# Lifespan
+# ── Lifespan ──────────────────────────────────────────────────────────────────
+
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
-    # === STARTUP ===
+    # Startup
     try:
-        await db.client.admin.command('ping')
-        print("Успішно підключено до MongoDB")
+        await db.client.admin.command("ping")
+        logger.info("Успішно підключено до MongoDB (%s)", settings.mongodb_db_name)
         await db.create_indexes()
-
-    except Exception as e:
-        print(f"Критична помилка підключення до MongoDB: {e}")
+    except Exception as exc:
+        logger.critical("Не вдалося підключитися до MongoDB: %s", exc)
         raise
 
     yield
 
-    # === SHUTDOWN ===
-    db.close()
-    print("Підключення до MongoDB закрито")
+    # Shutdown
+    await db.close()
 
+
+# ── Dependency Injection ───────────────────────────────────────────────────────
 
 async def get_db() -> AsyncIOMotorDatabase:
-    """Dependency Injection для бази даних"""
     return db.db

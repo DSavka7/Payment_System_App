@@ -1,156 +1,141 @@
+"""
+Ієрархія виключень предметної області.
+Всі класи наслідують HTTPException для зручної інтеграції з FastAPI.
+"""
 from fastapi import HTTPException, status
 from typing import Optional
 
 
-class UserAlreadyExists(HTTPException):
-    """Спроба зареєструвати email, що вже існує в системі."""
-    def __init__(self):
+# ─── Base ────────────────────────────────────────────────────────────────────
+
+class AppException(HTTPException):
+    """Базовий клас для всіх доменних виключень застосунку."""
+    pass
+
+
+# ─── User ────────────────────────────────────────────────────────────────────
+
+class UserAlreadyExists(AppException):
+    """Користувач з таким email вже зареєстрований."""
+    def __init__(self) -> None:
         super().__init__(
             status_code=status.HTTP_409_CONFLICT,
-            detail="Користувач з таким email вже існує"
+            detail="Користувач з таким email вже існує / User with this email already exists",
         )
 
 
-class UserNotFound(HTTPException):
-    """Користувача з вказаним ідентифікатором не знайдено."""
-    def __init__(self, detail: Optional[str] = None):
+class UserNotFound(AppException):
+    """Користувача не знайдено у базі даних."""
+    def __init__(self, detail: Optional[str] = None) -> None:
         super().__init__(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=detail or "Користувача не знайдено"
+            detail=detail or "Користувача не знайдено / User not found",
         )
 
 
-class AccountNotFound(HTTPException):
-    """Рахунок з вказаним ідентифікатором не знайдено."""
-    def __init__(self):
-        super().__init__(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Рахунок не знайдено"
-        )
-
-
-class AccountBlocked(HTTPException):
-    """Операція заборонена — рахунок заблоковано."""
-    def __init__(self):
-        super().__init__(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Рахунок заблоковано. Зверніться до служби підтримки"
-        )
-
-
-class TransactionNotFound(HTTPException):
-    """Транзакцію з вказаним ідентифікатором не знайдено."""
-    def __init__(self):
-        super().__init__(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Транзакцію не знайдено"
-        )
-
-
-class RequestNotFound(HTTPException):
-    """Запит з вказаним ідентифікатором не знайдено."""
-    def __init__(self):
-        super().__init__(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Запит не знайдено"
-        )
-
-
-class InvalidCredentials(HTTPException):
-    """Невірний email або пароль при автентифікації."""
-    def __init__(self):
+class InvalidCredentials(AppException):
+    """Невірний email або пароль під час входу."""
+    def __init__(self) -> None:
         super().__init__(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Невірні дані для входу",
+            detail="Невірні дані для входу / Invalid credentials",
             headers={"WWW-Authenticate": "Bearer"},
         )
 
 
-class InsufficientFunds(HTTPException):
+class TokenExpired(AppException):
+    """JWT-токен прострочено."""
+    def __init__(self) -> None:
+        super().__init__(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Токен прострочено / Token has expired",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+
+class InvalidToken(AppException):
+    """JWT-токен недійсний або підроблений."""
+    def __init__(self) -> None:
+        super().__init__(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Недійсний токен / Invalid token",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+
+class PermissionDenied(AppException):
+    """Недостатньо прав для виконання операції."""
+    def __init__(self) -> None:
+        super().__init__(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Доступ заборонено / Permission denied",
+        )
+
+
+# ─── Account ─────────────────────────────────────────────────────────────────
+
+class AccountNotFound(AppException):
+    """Рахунок не знайдено у базі даних."""
+    def __init__(self) -> None:
+        super().__init__(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Рахунок не знайдено / Account not found",
+        )
+
+
+class AccountBlocked(AppException):
+    """Рахунок заблоковано і не може брати участь у операціях."""
+    def __init__(self) -> None:
+        super().__init__(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Рахунок заблоковано / Account is blocked",
+        )
+
+
+class InsufficientFunds(AppException):
     """На рахунку недостатньо коштів для виконання операції."""
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Недостатньо коштів на рахунку"
+            detail="Недостатньо коштів на рахунку / Insufficient funds",
         )
 
 
-class InsufficientPermissions(HTTPException):
-    """Користувач не має прав для виконання даної операції."""
-    def __init__(self):
-        super().__init__(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Недостатньо прав для виконання операції"
-        )
-
-
-class UserBlocked(HTTPException):
-    """Обліковий запис користувача заблоковано адміністратором."""
-    def __init__(self):
-        super().__init__(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Обліковий запис заблоковано. Зверніться до служби підтримки"
-        )
-
-
-class InvalidAccountOwnership(HTTPException):
-    """Користувач намагається отримати доступ до чужого рахунку."""
-    def __init__(self):
-        super().__init__(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Доступ до цього рахунку заборонено"
-        )
-
-
-class TransferToSameAccount(HTTPException):
-    """Спроба переказу на той самий рахунок."""
-    def __init__(self):
-        super().__init__(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Неможливо здійснити переказ на той самий рахунок"
-        )
-
-
-class CurrencyMismatch(HTTPException):
+class CurrencyMismatch(AppException):
     """Валюти рахунків не збігаються при переказі."""
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Валюти рахунків відправника та отримувача не збігаються"
+            detail="Валюти рахунків не збігаються / Currency mismatch between accounts",
         )
 
 
-class DuplicateRequest(HTTPException):
-    """Активний запит для цього рахунку вже існує."""
-    def __init__(self):
+class SelfTransferNotAllowed(AppException):
+    """Переказ на той самий рахунок заборонено."""
+    def __init__(self) -> None:
         super().__init__(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Активний запит для цього рахунку вже існує"
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Переказ на той самий рахунок заборонено / Self-transfer is not allowed",
         )
 
 
-class AccountAlreadyBlocked(HTTPException):
-    """Спроба заблокувати вже заблокований рахунок."""
-    def __init__(self):
+# ─── Transaction ─────────────────────────────────────────────────────────────
+
+class TransactionNotFound(AppException):
+    """Транзакцію не знайдено."""
+    def __init__(self) -> None:
         super().__init__(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Рахунок вже заблоковано"
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Транзакцію не знайдено / Transaction not found",
         )
 
 
-class AccountAlreadyActive(HTTPException):
-    """Спроба розблокувати вже активний рахунок."""
-    def __init__(self):
-        super().__init__(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Рахунок вже активний"
-        )
+# ─── Request ─────────────────────────────────────────────────────────────────
 
-
-class UnblockRequiresRequest(HTTPException):
-    """Розблокування можливе лише через запит до адміністратора."""
-    def __init__(self):
+class RequestNotFound(AppException):
+    """Запит не знайдено."""
+    def __init__(self) -> None:
         super().__init__(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Для розблокування рахунку необхідно подати запит до адміністратора"
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Запит не знайдено / Request not found",
         )

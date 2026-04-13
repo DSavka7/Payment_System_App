@@ -1,0 +1,44 @@
+:root {
+  /* ── Palette ──────────────────────────────────── */
+  --ink:       #0d0f14;        /* near-black background  */
+  --ink-1:     #13161e;        /* card background        */
+  --ink-2:     #1a1e29;        /* elevated surface       */
+  --ink-3:     #222636;        /* border / divider       */
+  --ink-4:     #2e3448;        /* hover surface          */
+
+  --gold:      #c9a84c;        /* primary accent         */
+  --gold-light:#e2c47a;        /* hover gold             */
+  --gold-dim:  rgba(201,168,76,.15);
+
+  --silver:    #8b96b0;        /* secondary text         */
+  --mist:      #bcc4d8;        /* primary text           */
+  --white:     #eef0f6;        /* high-contrast text     */
+
+  --green:     #3ecf8e;        /* success                */
+  --green-dim: rgba(62,207,142,.12);
+  --red:       #ef4444;        /* error / danger         */
+  --red-dim:   rgba(239,68,68,.12);
+  --amber:     #f59e0b;        /* warning / pending      */
+  --amber-dim: rgba(245,158,11,.12);
+
+  /* ── Typography ────────────────────────────────── */
+  --font-display: 'Cormorant Garamond', Georgia, serif;
+  --font-body:    'DM Sans', system-ui, sans-serif;
+  --font-mono:    'DM Mono', 'Fira Mono', monospace;
+
+  /* ── Spacing ────────────────────────────────────── */
+  --sidebar-w: 240px;
+  --topbar-h:  64px;
+  --radius-sm: 6px;
+  --radius-md: 12px;
+  --radius-lg: 20px;
+
+  /* ── Shadows ────────────────────────────────────── */
+  --shadow-card: 0 4px 24px rgba(0,0,0,.4);
+  --shadow-modal:0 20px 60px rgba(0,0,0,.6);
+
+  /* ── Transitions ─────────────────────────────────── */
+  --t-fast:  120ms ease;
+  --t-base:  220ms ease;
+  --t-slow:  400ms ease;
+}

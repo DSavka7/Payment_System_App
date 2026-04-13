@@ -1,160 +1,103 @@
-import logging
-from fastapi import APIRouter, Depends, status, Query
-from typing import List, Dict
+"""
+Роутер для операцій з банківськими рахунками.
+ВАЖЛИВО: статичні маршрути (/transfer, /user/{id}) мають бути
+ПЕРЕД динамічними (/{account_id}) щоб FastAPI не плутав їх.
+"""
+from typing import List
 
+from fastapi import APIRouter, Depends, status
+
+from app.core.dependencies import get_current_user_id, require_admin
+from app.models.account_models import (
+    AccountCreate,
+    AccountResponse,
+    AccountUpdate,
+    TransferRequest,
+)
+from app.models.transaction_models import TransactionResponse
 from app.services.account_service import AccountService, get_account_service
-from app.models.account_models import AccountCreate, AccountResponse, AccountUpdate
-from app.core.security import require_user, require_admin
-from app.core.config import settings
 
 router = APIRouter(prefix="/accounts", tags=["accounts"])
-logger = logging.getLogger(__name__)
 
-
-# ─── USER ендпоінти ───────────────────────────────────────────────────────────
 
 @router.post(
     "/",
     response_model=AccountResponse,
     status_code=status.HTTP_201_CREATED,
-    summary="Створити рахунок",
+    summary="Створити рахунок / Create account",
 )
 async def create_account(
     account: AccountCreate,
-    payload: Dict = Depends(require_user),
     service: AccountService = Depends(get_account_service),
-):
+    _: str = Depends(get_current_user_id),
+) -> AccountResponse:
+    return await service.create_account(account)
 
-    return await service.create_account(user_id=payload["sub"], account=account)
 
-
-@router.get(
-    "/my",
-    response_model=List[AccountResponse],
-    summary="Мої рахунки",
+# !! /transfer МАЄ бути перед /{account_id} !!
+@router.post(
+    "/transfer",
+    response_model=TransactionResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Переказ між рахунками / Transfer between accounts",
 )
-async def get_my_accounts(
-    payload: Dict = Depends(require_user),
+async def transfer(
+    transfer_request: TransferRequest,
     service: AccountService = Depends(get_account_service),
-):
-    """Повертає всі рахунки поточного авторизованого користувача."""
-    return await service.get_my_accounts(user_id=payload["sub"])
+    _: str = Depends(get_current_user_id),
+) -> TransactionResponse:
+    return await service.transfer(transfer_request)
 
 
-@router.get(
-    "/{account_id}",
-    response_model=AccountResponse,
-    summary="Отримати рахунок за ID",
-)
-async def get_account(
-    account_id: str,
-    payload: Dict = Depends(require_user),
-    service: AccountService = Depends(get_account_service),
-):
-    """
-    Повертає рахунок за ID.
-    USER бачить тільки свій рахунок. ADMIN бачить будь-який.
-    """
-    return await service.get_account(
-        account_id=account_id,
-        requester_id=payload["sub"],
-        requester_role=payload["role"],
-    )
-
-
-@router.patch(
-    "/{account_id}/block",
-    response_model=AccountResponse,
-    summary="Заблокувати свій рахунок (self-block)",
-)
-async def self_block_account(
-    account_id: str,
-    payload: Dict = Depends(require_user),
-    service: AccountService = Depends(get_account_service),
-):
-    """
-    Користувач самостійно блокує СВІЙ рахунок.
-
-    **Важливо:** після блокування розблокувати рахунок самостійно НЕМОЖЛИВО.
-    Для розблокування необхідно подати запит до адміністратора
-    через `POST /requests/` з типом `UNBLOCK`.
-
-    Помилки:
-    - 403 — рахунок не належить поточному користувачу
-    - 409 — рахунок вже заблоковано
-    """
-    return await service.self_block_account(
-        account_id=account_id,
-        user_id=payload["sub"],
-    )
-
-
-# ─── ADMIN ендпоінти ──────────────────────────────────────────────────────────
-
-@router.get(
-    "/",
-    summary="[ADMIN] Список всіх рахунків",
-)
-async def get_all_accounts(
-    limit: int = Query(settings.default_page_size, ge=1, le=settings.max_page_size),
-    offset: int = Query(0, ge=0),
-    payload: Dict = Depends(require_admin),
-    service: AccountService = Depends(get_account_service),
-):
-    """Пагінований список усіх рахунків. Тільки для ADMIN."""
-    return await service.get_all_accounts(limit=limit, offset=offset)
-
-
+# !! /user/{user_id} МАЄ бути перед /{account_id} !!
 @router.get(
     "/user/{user_id}",
     response_model=List[AccountResponse],
-    summary="[ADMIN] Рахунки користувача",
+    summary="Рахунки користувача / User accounts",
 )
 async def get_user_accounts(
     user_id: str,
-    payload: Dict = Depends(require_admin),
     service: AccountService = Depends(get_account_service),
-):
-    """Повертає рахунки конкретного користувача за user_id. Тільки для ADMIN."""
-    return await service.get_user_accounts_admin(user_id=user_id)
+    _: str = Depends(get_current_user_id),
+) -> List[AccountResponse]:
+    return await service.get_user_accounts(user_id)
 
 
-@router.patch(
-    "/{account_id}/admin-block",
+@router.get(
+    "/{account_id}",
     response_model=AccountResponse,
-    summary="[ADMIN] Заблокувати рахунок",
+    summary="Отримати рахунок / Get account",
 )
-async def admin_block_account(
+async def get_account(
     account_id: str,
-    payload: Dict = Depends(require_admin),
     service: AccountService = Depends(get_account_service),
-):
-    return await service.block_account(account_id)
-
-
-@router.patch(
-    "/{account_id}/unblock",
-    response_model=AccountResponse,
-    summary="[ADMIN] Розблокувати рахунок",
-)
-async def unblock_account(
-    account_id: str,
-    payload: Dict = Depends(require_admin),
-    service: AccountService = Depends(get_account_service),
-):
-    return await service.unblock_account(account_id)
+    _: str = Depends(get_current_user_id),
+) -> AccountResponse:
+    return await service.get_account(account_id)
 
 
 @router.patch(
     "/{account_id}",
     response_model=AccountResponse,
-    summary="[ADMIN] Оновити параметри рахунку",
+    summary="Оновити рахунок / Update account",
 )
 async def update_account(
     account_id: str,
     update_data: AccountUpdate,
-    payload: Dict = Depends(require_admin),
     service: AccountService = Depends(get_account_service),
-):
-    """Оновлює баланс або добовий ліміт рахунку. Тільки для ADMIN."""
+    _: dict = Depends(require_admin),
+) -> AccountResponse:
     return await service.update_account(account_id, update_data)
+
+
+@router.delete(
+    "/{account_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Видалити рахунок / Delete account",
+)
+async def delete_account(
+    account_id: str,
+    service: AccountService = Depends(get_account_service),
+    _: dict = Depends(require_admin),
+) -> None:
+    return await service.delete_account(account_id)

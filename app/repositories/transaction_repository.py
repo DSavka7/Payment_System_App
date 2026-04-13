@@ -1,21 +1,24 @@
-
-import logging
-from motor.motor_asyncio import AsyncIOMotorCollection
 from bson import ObjectId
-from typing import Optional, List, Tuple
 from datetime import datetime
+from typing import Optional, List, Tuple
 
+from motor.motor_asyncio import AsyncIOMotorCollection
+
+from app.core.logging_config import get_logger
 from app.models.transaction_models import TransactionCreate, TransactionInDB
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class TransactionRepository:
-    def __init__(self, collection: AsyncIOMotorCollection):
+
+    def __init__(self, collection: AsyncIOMotorCollection) -> None:
         self.collection = collection
 
-    def _doc_to_model(self, doc: dict) -> TransactionInDB:
-        """Конвертує MongoDB-документ у Pydantic-модель."""
+    # ── Helpers ───────────────────────────────────────────────────────────────
+
+    @staticmethod
+    def _doc_to_model(doc: dict) -> TransactionInDB:
         return TransactionInDB(
             id=str(doc["_id"]),
             from_account_id=str(doc["from_account_id"]),
@@ -31,7 +34,10 @@ class TransactionRepository:
             created_at=doc["created_at"],
         )
 
+    # ── Create ────────────────────────────────────────────────────────────────
+
     async def create(self, transaction: TransactionCreate) -> TransactionInDB:
+        """Зберігає транзакцію в БД."""
         tx_dict = transaction.model_dump()
         tx_dict["from_account_id"] = ObjectId(tx_dict["from_account_id"])
         if tx_dict.get("to_account_id"):
@@ -41,27 +47,22 @@ class TransactionRepository:
 
         result = await self.collection.insert_one(tx_dict)
         tx_dict["_id"] = result.inserted_id
-
-        logger.info(
-            "Транзакція %s: %.2f %s з %s",
-            result.inserted_id,
-            tx_dict["amount"],
-            tx_dict["currency"],
-            tx_dict["from_account_id"],
-        )
+        logger.info("Транзакцію записано: %s", str(result.inserted_id))
         return self._doc_to_model(tx_dict)
 
+    # ── Read ──────────────────────────────────────────────────────────────────
+
     async def get_by_id(self, tx_id: str) -> Optional[TransactionInDB]:
-        try:
-            doc = await self.collection.find_one({"_id": ObjectId(tx_id)})
-        except Exception:
-            return None
+        """Повертає транзакцію за ID або None."""
+        doc = await self.collection.find_one({"_id": ObjectId(tx_id)})
         return self._doc_to_model(doc) if doc else None
 
     async def get_by_account(
-        self, account_id: str, limit: int = 20, offset: int = 0
+        self,
+        account_id: str,
+        limit: int = 50,
+        offset: int = 0,
     ) -> Tuple[List[TransactionInDB], int]:
-
         query = {
             "$or": [
                 {"from_account_id": ObjectId(account_id)},
@@ -71,12 +72,4 @@ class TransactionRepository:
         total = await self.collection.count_documents(query)
         cursor = self.collection.find(query).sort("created_at", -1).skip(offset).limit(limit)
         docs = await cursor.to_list(length=limit)
-        return [self._doc_to_model(doc) for doc in docs], total
-
-    async def get_all(
-        self, limit: int = 20, offset: int = 0
-    ) -> Tuple[List[TransactionInDB], int]:
-        total = await self.collection.count_documents({})
-        cursor = self.collection.find().sort("created_at", -1).skip(offset).limit(limit)
-        docs = await cursor.to_list(length=limit)
-        return [self._doc_to_model(doc) for doc in docs], total
+        return [self._doc_to_model(d) for d in docs], total

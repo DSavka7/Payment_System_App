@@ -1,40 +1,29 @@
-from pydantic import BaseModel, Field, EmailStr, field_validator
+"""Pydantic-схеми для сутності Користувач (User)."""
+from pydantic import BaseModel, Field, EmailStr
 from datetime import datetime
 from typing import Optional
 
-from app.core.security import validate_password_strength
-
 
 class UserBase(BaseModel):
+    """Базові поля користувача."""
     email: EmailStr
     phone: str = Field(..., pattern=r"^\+380\d{9}$", examples=["+380991234567"])
-    first_name: str = Field(..., min_length=1, max_length=50)
-    last_name: str = Field(..., min_length=1, max_length=50)
     role: str = Field(default="USER")
 
 
-class UserCreate(BaseModel):
-    email: EmailStr
-    phone: str = Field(..., pattern=r"^\+380\d{9}$")
-    first_name: str = Field(..., min_length=1, max_length=50)
-    last_name: str = Field(..., min_length=1, max_length=50)
-    password: str = Field(..., min_length=8)
-
-    @field_validator("password")
-    @classmethod
-    def password_strength(cls, v: str) -> str:
-        validate_password_strength(v)
-        return v
+class UserCreate(UserBase):
+    """Схема для реєстрації нового користувача."""
+    password: str = Field(..., min_length=8, examples=["SecurePass1"])
 
 
 class UserUpdate(BaseModel):
+    """Схема для часткового оновлення даних користувача."""
     phone: Optional[str] = Field(None, pattern=r"^\+380\d{9}$")
-    first_name: Optional[str] = Field(None, min_length=1, max_length=50)
-    last_name: Optional[str] = Field(None, min_length=1, max_length=50)
     status: Optional[str] = None
 
 
 class UserInDB(UserBase):
+    """Внутрішнє представлення користувача (з хешем паролю)."""
     id: Optional[str] = None
     password_hash: str
     status: str = "active"
@@ -45,13 +34,9 @@ class UserInDB(UserBase):
         populate_by_name = True
 
 
-class UserResponse(BaseModel):
+class UserResponse(UserBase):
+    """Публічне представлення користувача (без пароля)."""
     id: str
-    email: EmailStr
-    phone: str
-    first_name: str
-    last_name: str
-    role: str
     status: str
     created_at: datetime
 
@@ -60,11 +45,12 @@ class UserResponse(BaseModel):
 
 
 class TokenResponse(BaseModel):
-
+    """Відповідь при успішній автентифікації."""
     access_token: str
     refresh_token: str
     token_type: str = "bearer"
 
 
-class RefreshTokenRequest(BaseModel):
+class RefreshRequest(BaseModel):
+    """Запит на оновлення access token."""
     refresh_token: str

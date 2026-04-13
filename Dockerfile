@@ -1,14 +1,28 @@
-FROM python:3.12-slim
-
-LABEL maintainer="Payment System API"
-LABEL description="Banking REST API analogous to Monobank"
+# ── Stage: builder ────────────────────────────────────────────────────────────
+FROM python:3.12-slim AS builder
 
 WORKDIR /app
 
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
 
-COPY app .
+COPY requirements.txt .
+RUN pip install --no-cache-dir --upgrade pip \
+    && pip install --no-cache-dir -r requirements.txt
+
+# ── Stage: runtime ────────────────────────────────────────────────────────────
+FROM python:3.12-slim
+
+WORKDIR /app
+
+
+COPY --from=builder /usr/local/lib/python3.12/site-packages /usr/local/lib/python3.12/site-packages
+COPY --from=builder /usr/local/bin /usr/local/bin
+
+
+COPY app/ ./app/
+
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
 
 EXPOSE 8000
 
