@@ -1,4 +1,3 @@
-
 const App = (() => {
 
   // ── Auth state ──────────────────────────────────────────────────────────────
@@ -14,7 +13,6 @@ const App = (() => {
     document.getElementById('app-wrapper').classList.remove('hidden');
     _updateSidebar();
     navigateTo('dashboard');
-    // Load all data needed by selects up front
     AccountsPage.load();
   }
 
@@ -66,8 +64,8 @@ const App = (() => {
     if (loader) loader();
   }
 
-  // Sidebar nav clicks
-  document.querySelectorAll('.nav-item').forEach(item => {
+  // Sidebar nav clicks — пропускаємо посилання без data-page (наприклад admin.html)
+  document.querySelectorAll('.nav-item[data-page]').forEach(item => {
     item.addEventListener('click', (e) => {
       e.preventDefault();
       navigateTo(item.dataset.page);
@@ -92,10 +90,13 @@ const App = (() => {
   burger.addEventListener('click', toggleSidebar);
   overlay.addEventListener('click', closeSidebar);
 
-  // Close sidebar on nav click (mobile)
+  // Close sidebar on nav click (mobile) — тільки для внутрішніх пунктів
   document.querySelectorAll('.nav-item[data-page]').forEach(item => {
     item.addEventListener('click', closeSidebar);
   });
+  // Admin link закриває sidebar але не перехоплює перехід
+  const adminLink = document.getElementById('nav-admin');
+  if (adminLink) adminLink.addEventListener('click', closeSidebar);
 
   // Logout
   document.getElementById('btn-logout').addEventListener('click', async () => {

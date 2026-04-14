@@ -114,7 +114,7 @@
         </a>
       </nav>
 
-      <a href="admin.html" class="nav-item" id="nav-admin" style="display:none;margin:0 12px 8px;border-top:1px solid var(--ink-3);padding-top:12px">
+      <a href="admin.html" class="nav-item" id="nav-admin" style="display:none;margin:0 12px 8px;border-top:1px solid var(--ink-3);padding-top:12px;color:var(--red)">
         <svg class="nav-item__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0 1 12 2.944a11.955 11.955 0 0 1-8.618 3.04A12.02 12.02 0 0 0 3 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
         <span>Адмін панель</span>
       </a>
@@ -209,9 +209,15 @@
               <div class="transfer-arrow">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 5v14m7-7-7 7-7-7"/></svg>
               </div>
-              <div class="field">
-                <label class="field__label" for="tf-to">На рахунок / To (ID)</label>
-                <input class="field__input" id="tf-to" type="text" placeholder="account_id отримувача" required />
+             <div class="field">
+               <label class="field__label" for="tf-to">Номер картки отримувача (16 цифр)</label>
+                <input class="field__input"
+                  id="tf-to"
+                  type="text"
+                  placeholder="1234 5678 9012 3456"
+                  maxlength="19"
+                  inputmode="numeric"
+                  autocomplete="off" />
                 <span class="field__error" id="tf-to-err"></span>
               </div>
               <div class="field">
@@ -289,12 +295,14 @@
       </div>
       <form id="form-add-account" class="form" novalidate>
         <div class="field">
-          <label class="field__label" for="acc-card">Номер картки <span style="color:var(--silver);font-size:.7rem">(генерується автоматично)</span></label>
-          <div style="display:flex;gap:8px">
-            <input class="field__input" id="acc-card" type="text" placeholder="1234 **** **** 5678" required readonly style="cursor:default;flex:1" />
-            <button type="button" class="btn btn--outline btn--sm" id="btn-regen-card" title="Згенерувати новий номер" style="flex-shrink:0;padding:0 12px">↻</button>
+          <label class="field__label">Номер картки <span style="color:var(--silver);font-size:.7rem">(генерується автоматично)</span></label>
+          <div style="display:flex;gap:8px;align-items:center">
+            <input class="field__input" id="acc-card" type="text" readonly
+                   style="font-family:var(--font-mono);letter-spacing:.1em;cursor:default;flex:1"
+                   placeholder="Натисніть ↻ або відкрийте знову" />
+            <button type="button" class="btn btn--outline btn--sm" id="btn-regen-card" title="Згенерувати новий номер" style="flex-shrink:0;padding:0 14px;height:40px">↻</button>
           </div>
-          <span class="field__error" id="acc-card-err"></span>
+          <span style="font-size:.72rem;color:var(--silver);margin-top:2px">Повний номер зберігається у системі для переказів</span>
         </div>
         <div class="field">
           <label class="field__label" for="acc-currency">Валюта</label>

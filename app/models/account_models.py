@@ -4,38 +4,42 @@ from typing import Optional
 
 
 class AccountBase(BaseModel):
-    """Базові поля банківського рахунку."""
     user_id: str
-    card_number: str = Field(
-        ...,
-        pattern=r"^\d{4} \*\*\*\* \*\*\*\* \d{4}$",
-        examples=["1234 **** **** 5678"],
-    )
     currency: str = Field(..., pattern=r"^(UAH|USD|EUR)$", examples=["UAH"])
-    balance: float = Field(..., ge=0, examples=[1000.0])
+    balance: float = Field(0.0, ge=0, examples=[1000.0])
 
 
 class AccountCreate(AccountBase):
-    """Схема для створення нового рахунку."""
     pass
 
 
 class AccountUpdate(BaseModel):
-    """Схема для оновлення рахунку (статус або баланс)."""
     status: Optional[str] = None
     balance: Optional[float] = Field(None, ge=0)
 
 
-class AccountInDB(AccountBase):
-    """Внутрішнє представлення рахунку."""
+class AccountInDB(BaseModel):
     id: Optional[str] = None
+    user_id: str
+    card_number_full: str
+    currency: str
+    balance: float
     status: str = "active"
     created_at: datetime
 
+    @property
+    def card_number(self) -> str:
+        n = self.card_number_full
+        return f"{n[:4]} **** **** {n[-4:]}"
 
-class AccountResponse(AccountBase):
-    """Публічне представлення рахунку."""
+
+class AccountResponse(BaseModel):
     id: str
+    user_id: str
+    card_number: str
+    card_number_full: str
+    currency: str
+    balance: float
     status: str
     created_at: datetime
 
@@ -44,8 +48,7 @@ class AccountResponse(AccountBase):
 
 
 class TransferRequest(BaseModel):
-    """Схема запиту на переказ між рахунками."""
-    from_account_id: str = Field(..., description="ID рахунку-відправника")
-    to_account_id: str = Field(..., description="ID рахунку-отримувача")
-    amount: float = Field(..., gt=0, description="Сума переказу")
+    from_account_id: str
+    to_card_number: str = Field(..., pattern=r"^\d{16}$")
+    amount: float = Field(..., gt=0)
     description: Optional[str] = Field(None, max_length=255)

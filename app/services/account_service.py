@@ -1,4 +1,4 @@
-
+import random
 from typing import List
 
 from fastapi import Depends
@@ -16,6 +16,7 @@ from app.core.logging_config import get_logger
 from app.db.database import get_db
 from app.models.account_models import (
     AccountCreate,
+    AccountInDB,
     AccountResponse,
     AccountUpdate,
     TransferRequest,
@@ -27,8 +28,20 @@ from app.repositories.transaction_repository import TransactionRepository
 logger = get_logger(__name__)
 
 
-class AccountService:
+def _to_response(acc: AccountInDB) -> AccountResponse:
+    return AccountResponse(
+        id=acc.id,
+        user_id=acc.user_id,
+        card_number=acc.card_number,
+        card_number_full=acc.card_number_full,
+        currency=acc.currency,
+        balance=acc.balance,
+        status=acc.status,
+        created_at=acc.created_at,
+    )
 
+
+class AccountService:
     def __init__(
         self,
         account_repo: AccountRepository,
@@ -38,56 +51,60 @@ class AccountService:
         self.tx_repo = tx_repo
 
     async def create_account(self, account: AccountCreate) -> AccountResponse:
-        """Створює новий банківський рахунок."""
-        account_in_db = await self.account_repo.create(account)
-        return AccountResponse.model_validate(account_in_db.model_dump())
+        """Создаёт счёт с автоматически сгенерированным номером карты"""
+        card_number_full = await self._generate_unique_card_number()
+
+        acc = await self.account_repo.create_with_card_number(
+            account=account,
+            card_number_full=card_number_full,
+        )
+        logger.info(f"Счёт успешно создан | ID: {acc.id} | Валюта: {account.currency}")
+        return _to_response(acc)
+
+    async def _generate_unique_card_number(self) -> str:
+        """Генерирует уникальный 16-значный номер карты"""
+        for attempt in range(15):
+            card = ''.join(str(random.randint(1 if i == 0 else 0, 9)) for i in range(16))
+            if not await self.account_repo.exists_by_card_number(card):
+                return card
+
+
+        raise Exception("Не вдалося згенерувати унікальний номер карти. Спробуйте ще раз.")
 
     async def get_account(self, account_id: str) -> AccountResponse:
-        """Повертає рахунок за ID."""
-        account = await self.account_repo.get_by_id(account_id)
-        if not account:
+        acc = await self.account_repo.get_by_id(account_id)
+        if not acc:
             raise AccountNotFound()
-        return AccountResponse.model_validate(account.model_dump())
+        return _to_response(acc)
 
     async def get_user_accounts(self, user_id: str) -> List[AccountResponse]:
-        """Повертає всі рахунки користувача."""
         accounts = await self.account_repo.get_by_user_id(user_id)
-        return [AccountResponse.model_validate(a.model_dump()) for a in accounts]
+        return [_to_response(a) for a in accounts]
 
-    async def update_account(
-        self, account_id: str, update_data: AccountUpdate
-    ) -> AccountResponse:
-        account = await self.account_repo.update(account_id, update_data)
-        if not account:
+    async def update_account(self, account_id: str, update_data: AccountUpdate) -> AccountResponse:
+        acc = await self.account_repo.update(account_id, update_data)
+        if not acc:
             raise AccountNotFound()
-        return AccountResponse.model_validate(account.model_dump())
+        return _to_response(acc)
 
     async def delete_account(self, account_id: str) -> dict:
-        deleted = await self.account_repo.delete(account_id)
-        if not deleted:
+        if not await self.account_repo.delete(account_id):
             raise AccountNotFound()
         return {"detail": "Рахунок видалено / Account deleted"}
 
-    async def transfer(
-        self, transfer: TransferRequest
-    ) -> TransactionResponse:
-        # ── Завантаження рахунків ────────────────────────────────────────────
+    async def transfer(self, transfer: TransferRequest) -> TransactionResponse:
         from_account = await self.account_repo.get_by_id(transfer.from_account_id)
         if not from_account:
             raise AccountNotFound()
 
-        to_account = await self.account_repo.get_by_id(transfer.to_account_id)
+        to_account = await self.account_repo.get_by_card_number(transfer.to_card_number)
         if not to_account:
             raise AccountNotFound()
 
-        # ── Бізнес-перевірки ─────────────────────────────────────────────────
-        if transfer.from_account_id == transfer.to_account_id:
+        if from_account.id == to_account.id:
             raise SelfTransferNotAllowed()
 
-        if from_account.status != ACCOUNT_STATUS_ACTIVE:
-            raise AccountBlocked()
-
-        if to_account.status != ACCOUNT_STATUS_ACTIVE:
+        if from_account.status != ACCOUNT_STATUS_ACTIVE or to_account.status != ACCOUNT_STATUS_ACTIVE:
             raise AccountBlocked()
 
         if from_account.currency != to_account.currency:
@@ -96,21 +113,17 @@ class AccountService:
         if from_account.balance < transfer.amount:
             raise InsufficientFunds()
 
-        # ── Оновлення балансів ────────────────────────────────────────────────
         await self.account_repo.update_balance(
-            transfer.from_account_id,
-            round(from_account.balance - transfer.amount, 2),
+            from_account.id, round(from_account.balance - transfer.amount, 2)
         )
         await self.account_repo.update_balance(
-            transfer.to_account_id,
-            round(to_account.balance + transfer.amount, 2),
+            to_account.id, round(to_account.balance + transfer.amount, 2)
         )
 
-        # ── Запис транзакцій ──────────────────────────────────────────────────
         tx = await self.tx_repo.create(
             TransactionCreate(
-                from_account_id=transfer.from_account_id,
-                to_account_id=transfer.to_account_id,
+                from_account_id=from_account.id,
+                to_account_id=to_account.id,
                 amount=transfer.amount,
                 currency=from_account.currency,
                 type="transfer",
@@ -121,24 +134,18 @@ class AccountService:
         )
 
         logger.info(
-            "Переказ виконано: %s → %s | %.2f %s",
-            transfer.from_account_id,
-            transfer.to_account_id,
-            transfer.amount,
-            from_account.currency,
+            "Переказ: %s → %s | %.2f %s",
+            from_account.id, transfer.to_card_number[-4:], transfer.amount, from_account.currency
         )
         return TransactionResponse.model_validate(tx.model_dump())
 
 
-# ── Dependency Injection ───────────────────────────────────────────────────────
-
+# ── Dependency Injection ─────────────────────────────────────────────────────
 def get_account_repository(db: AsyncIOMotorDatabase = Depends(get_db)) -> AccountRepository:
     return AccountRepository(db.accounts)
 
 
-def get_transaction_repository_for_account(
-    db: AsyncIOMotorDatabase = Depends(get_db),
-) -> TransactionRepository:
+def get_transaction_repository_for_account(db: AsyncIOMotorDatabase = Depends(get_db)) -> TransactionRepository:
     return TransactionRepository(db.transactions)
 
 

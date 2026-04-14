@@ -49,12 +49,25 @@ class Database:
         logger.info("Перевірка/створення індексів MongoDB...")
 
         try:
-            await self.users.create_index("email", unique=True, name="unique_email")
+
+            old_index_names = ["unique_user_card", "user_id_1_card_number_1"]
+            for idx_name in old_index_names:
+                try:
+                    await self.accounts.drop_index(idx_name)
+                    logger.info(f"Старий індекс '{idx_name}' успішно видалено")
+                except Exception:
+                    pass
+
+
             await self.accounts.create_index(
-                [("user_id", pymongo.ASCENDING), ("card_number", pymongo.ASCENDING)],
+                [("user_id", pymongo.ASCENDING), ("card_number_full", pymongo.ASCENDING)],
                 unique=True,
-                name="unique_user_card",
+                name="unique_user_card_full",
+                background=True
             )
+
+            # Базовые индексы
+            await self.users.create_index("email", unique=True, name="unique_email")
 
             simple_indexes = [
                 ("users", "role", "idx_user_role"),
@@ -67,30 +80,23 @@ class Database:
                 ("requests", "created_at", "idx_req_date"),
             ]
 
-            compound_indexes = [
-                (
-                    "requests",
-                    [("user_id", pymongo.ASCENDING), ("status", pymongo.ASCENDING)],
-                    "idx_req_user_status",
-                ),
-            ]
-
             for col_name, key, name in simple_indexes:
                 col = getattr(self, col_name)
                 try:
                     await col.create_index(key, name=name, background=True)
                 except Exception as exc:
-                    if "already exists" in str(exc) or "IndexOptionsConflict" in str(exc):
-                        logger.debug("Індекс %s вже існує — пропуск", name)
-                    else:
+                    if "already exists" not in str(exc).lower():
                         logger.warning("Помилка індексу %s: %s", name, exc)
 
-            for col_name, key, name in compound_indexes:
-                col = getattr(self, col_name)
-                try:
-                    await col.create_index(key, name=name, background=True)
-                except Exception as exc:
-                    logger.warning("Помилка складеного індексу %s: %s", name, exc)
+
+            try:
+                await self.requests.create_index(
+                    [("user_id", pymongo.ASCENDING), ("status", pymongo.ASCENDING)],
+                    name="idx_req_user_status",
+                    background=True
+                )
+            except Exception:
+                pass
 
             logger.info("Індекси успішно перевірені / створені")
 
