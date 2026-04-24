@@ -37,7 +37,13 @@
         </div>
         <div class="field">
           <label class="field__label" for="login-password">Пароль / Password</label>
-          <input class="field__input" id="login-password" type="password" placeholder="••••••••" autocomplete="current-password" required />
+          <div class="field__password-wrap">
+            <input class="field__input" id="login-password" type="password" placeholder="••••••••" autocomplete="current-password" required />
+            <button type="button" class="field__eye-btn" id="login-password-eye" aria-label="Показати пароль">
+              <svg id="login-eye-show" class="field__eye-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+              <svg id="login-eye-hide" class="field__eye-icon" style="display:none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+            </button>
+          </div>
           <span class="field__error" id="login-password-err"></span>
         </div>
         <div id="login-error" class="alert alert--error hidden"></div>
@@ -54,21 +60,82 @@
       <h2 class="auth-card__title">Реєстрація</h2>
       <p class="auth-card__sub">Create your account</p>
       <form id="form-register" class="form" novalidate>
+
+        <!-- Ім'я та прізвище -->
+        <div class="field-row">
+          <div class="field">
+            <label class="field__label" for="reg-first-name">Ім'я / First name</label>
+            <input class="field__input" id="reg-first-name" type="text" placeholder="Іван" autocomplete="given-name" required />
+            <span class="field__error" id="reg-first-name-err"></span>
+          </div>
+          <div class="field">
+            <label class="field__label" for="reg-last-name">Прізвище / Last name</label>
+            <input class="field__input" id="reg-last-name" type="text" placeholder="Петренко" autocomplete="family-name" required />
+            <span class="field__error" id="reg-last-name-err"></span>
+          </div>
+        </div>
+
         <div class="field">
           <label class="field__label" for="reg-email">Email</label>
-          <input class="field__input" id="reg-email" type="email" placeholder="your@email.com" required />
+          <input class="field__input" id="reg-email" type="email" placeholder="your@email.com" autocomplete="email" required />
           <span class="field__error" id="reg-email-err"></span>
         </div>
         <div class="field">
           <label class="field__label" for="reg-phone">Телефон / Phone</label>
-          <input class="field__input" id="reg-phone" type="tel" placeholder="+380991234567" required />
+          <input class="field__input" id="reg-phone" type="tel" placeholder="+380991234567" autocomplete="tel" required />
           <span class="field__error" id="reg-phone-err"></span>
         </div>
+
+        <!-- Пароль зі слайдером та кнопкою ока -->
         <div class="field">
           <label class="field__label" for="reg-password">Пароль / Password</label>
-          <input class="field__input" id="reg-password" type="password" placeholder="мін. 8 символів" required minlength="8" />
+          <div class="field__password-wrap">
+            <input class="field__input" id="reg-password" type="password" placeholder="мін. 8 символів" autocomplete="new-password" required />
+            <button type="button" class="field__eye-btn" id="reg-password-eye" aria-label="Показати пароль">
+              <svg id="eye-icon-show" class="field__eye-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+              <svg id="eye-icon-hide" class="field__eye-icon" style="display:none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+            </button>
+          </div>
+
+          <!-- Слайдер надійності пароля -->
+          <div class="pwd-strength">
+            <div class="pwd-strength__bars">
+              <div class="pwd-strength__bar" id="pwd-bar-1"></div>
+              <div class="pwd-strength__bar" id="pwd-bar-2"></div>
+              <div class="pwd-strength__bar" id="pwd-bar-3"></div>
+              <div class="pwd-strength__bar" id="pwd-bar-4"></div>
+              <div class="pwd-strength__bar" id="pwd-bar-5"></div>
+            </div>
+            <span class="pwd-strength__label" id="pwd-strength-label"></span>
+          </div>
+
+          <!-- Вимоги до пароля -->
+          <ul class="pwd-reqs">
+            <li class="pwd-reqs__item" id="req-len">
+              <svg class="pwd-reqs__icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="6"/></svg>
+              Мінімум 8 символів
+            </li>
+            <li class="pwd-reqs__item" id="req-upper">
+              <svg class="pwd-reqs__icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="6"/></svg>
+              Велика літера (A–Z)
+            </li>
+            <li class="pwd-reqs__item" id="req-lower">
+              <svg class="pwd-reqs__icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="6"/></svg>
+              Мала літера (a–z)
+            </li>
+            <li class="pwd-reqs__item" id="req-digit">
+              <svg class="pwd-reqs__icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="6"/></svg>
+              Цифра (0–9)
+            </li>
+            <li class="pwd-reqs__item" id="req-special">
+              <svg class="pwd-reqs__icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="6"/></svg>
+              Спецсимвол (!@#$%^&amp;*…)
+            </li>
+          </ul>
+
           <span class="field__error" id="reg-password-err"></span>
         </div>
+
         <div id="reg-error" class="alert alert--error hidden"></div>
         <div id="reg-success" class="alert alert--success hidden"></div>
         <button class="btn btn--primary btn--full" type="submit">

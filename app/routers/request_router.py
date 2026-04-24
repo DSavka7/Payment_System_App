@@ -1,9 +1,10 @@
-
+"""
+Роутер для управління запитами на операції з рахунками.
+"""
 from typing import List
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Query, status
 
-from app.core.dependencies import get_current_user_id, require_admin
 from app.models.request_models import RequestCreate, RequestResponse, RequestUpdate
 from app.services.request_service import RequestService, get_request_service
 
@@ -14,55 +15,53 @@ router = APIRouter(prefix="/requests", tags=["requests"])
     "/",
     response_model=RequestResponse,
     status_code=status.HTTP_201_CREATED,
-    summary="Створити запит / Create request",
+    summary="Створення нового запиту",
 )
 async def create_request(
     request: RequestCreate,
     service: RequestService = Depends(get_request_service),
-    _: str = Depends(get_current_user_id),
 ) -> RequestResponse:
-    """Створює новий запит до адміністратора."""
+    """Створює новий запит на операцію з рахунком (блокування/розблокування)."""
     return await service.create_request(request)
-
-
-@router.get(
-    "/user/{user_id}",
-    response_model=List[RequestResponse],
-    summary="Запити користувача / User requests",
-)
-async def get_user_requests(
-    user_id: str,
-    service: RequestService = Depends(get_request_service),
-    _: str = Depends(get_current_user_id),
-) -> List[RequestResponse]:
-    """Повертає всі запити вказаного користувача."""
-    return await service.get_user_requests(user_id)
 
 
 @router.get(
     "/{request_id}",
     response_model=RequestResponse,
-    summary="Отримати запит / Get request",
+    summary="Отримання запиту за ID",
 )
 async def get_request(
     request_id: str,
     service: RequestService = Depends(get_request_service),
-    _: str = Depends(get_current_user_id),
 ) -> RequestResponse:
-    """Повертає запит за ID."""
+    """Повертає деталі запиту за його ідентифікатором."""
     return await service.get_request(request_id)
+
+
+@router.get(
+    "/user/{user_id}",
+    response_model=List[RequestResponse],
+    summary="Список запитів користувача з пагінацією",
+)
+async def get_user_requests(
+    user_id: str,
+    limit: int = Query(50, ge=1, le=100, description="Кількість записів на сторінку"),
+    offset: int = Query(0, ge=0, description="Зміщення для пагінації"),
+    service: RequestService = Depends(get_request_service),
+) -> List[RequestResponse]:
+    """Повертає всі запити користувача з підтримкою пагінації."""
+    return await service.get_user_requests(user_id, limit=limit, offset=offset)
 
 
 @router.patch(
     "/{request_id}/status",
     response_model=RequestResponse,
-    summary="Оновити статус запиту / Update request status",
+    summary="Оновлення статусу запиту (адмін)",
 )
 async def update_request_status(
     request_id: str,
     update: RequestUpdate,
     service: RequestService = Depends(get_request_service),
-    _: dict = Depends(require_admin),
 ) -> RequestResponse:
-    """Оновлює статус запиту (тільки для адміністраторів)."""
+    """Змінює статус запиту (для адміністратора)."""
     return await service.update_request_status(request_id, update)

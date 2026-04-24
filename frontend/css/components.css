@@ -67,6 +67,16 @@
 
 .field { display: flex; flex-direction: column; gap: 6px; }
 
+/* Два поля в рядок (ім'я + прізвище) */
+.field-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+@media (max-width: 480px) {
+  .field-row { grid-template-columns: 1fr; }
+}
+
 .field__label {
   font-size: .78rem;
   font-weight: 500;
@@ -120,6 +130,116 @@
   pointer-events: none;
 }
 .field__input--prefixed { padding-left: 34px; }
+
+/* ── Password field with eye button ──────────────── */
+.field__password-wrap {
+  position: relative;
+}
+.field__password-wrap .field__input {
+  padding-right: 44px;
+}
+.field__eye-btn {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  padding: 4px;
+  color: var(--silver);
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color var(--t-fast);
+}
+.field__eye-btn:hover { color: var(--mist); }
+.field__eye-icon {
+  width: 18px;
+  height: 18px;
+  display: block;
+  pointer-events: none;
+}
+
+/* ── Password Strength Meter ──────────────────────── */
+.pwd-strength {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.pwd-strength__bars {
+  display: flex;
+  gap: 4px;
+  flex: 1;
+}
+
+.pwd-strength__bar {
+  flex: 1;
+  height: 3px;
+  border-radius: 99px;
+  background: var(--ink-3);
+  transition: background var(--t-base);
+}
+
+.pwd-strength__bar--weak   { background: var(--red); }
+.pwd-strength__bar--fair   { background: var(--amber); }
+.pwd-strength__bar--good   { background: #7fcd75; }
+.pwd-strength__bar--strong { background: var(--green); }
+
+.pwd-strength__label {
+  font-size: .72rem;
+  font-family: var(--font-mono);
+  letter-spacing: .04em;
+  white-space: nowrap;
+  color: var(--silver);
+  min-width: 80px;
+  text-align: right;
+  transition: color var(--t-base);
+}
+.pwd-strength__label--weak   { color: var(--red); }
+.pwd-strength__label--fair   { color: var(--amber); }
+.pwd-strength__label--good   { color: #7fcd75; }
+.pwd-strength__label--strong { color: var(--green); }
+
+/* ── Password Requirements List ───────────────────── */
+.pwd-reqs {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 10px;
+  padding: 10px 12px;
+  background: var(--ink-2);
+  border: 1px solid var(--ink-3);
+  border-radius: var(--radius-sm);
+}
+
+.pwd-reqs__item {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: .78rem;
+  color: var(--silver);
+  transition: color var(--t-base);
+}
+
+.pwd-reqs__icon {
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+  transition: stroke var(--t-base);
+}
+
+/* Met стан — зелений */
+.pwd-reqs__item--met {
+  color: var(--green);
+}
+.pwd-reqs__item--met .pwd-reqs__icon {
+  stroke: var(--green);
+}
 
 /* ── Alerts ───────────────────────────────────────── */
 .alert {
@@ -285,8 +405,8 @@
   font-weight: 500;
   letter-spacing: .04em;
 }
-.tx-item__icon--out { background: var(--red-dim); color: #fca5a5; }
-.tx-item__icon__icon--in  { background: var(--green-dim); color: #6ee7b7; }
+.tx-item__icon--out { background: var(--red-dim);   color: #fca5a5; }
+.tx-item__icon--in  { background: var(--green-dim); color: #6ee7b7; }
 
 .tx-item__body { flex: 1; min-width: 0; }
 .tx-item__desc {

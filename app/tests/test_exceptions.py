@@ -1,55 +1,39 @@
-
+"""
+Юніт-тести для ієрархії винятків застосунку.
+"""
 import pytest
 from fastapi import status
 
 from app.core.exceptions import (
+    BaseAppException,
     UserAlreadyExists,
     UserNotFound,
-    InvalidCredentials,
-    TokenExpired,
-    InvalidToken,
-    PermissionDenied,
+    UserInactive,
     AccountNotFound,
     AccountBlocked,
     InsufficientFunds,
-    CurrencyMismatch,
-    SelfTransferNotAllowed,
     TransactionNotFound,
     RequestNotFound,
-    AppException,
+    InvalidCredentials,
+    Forbidden,
+    InvalidObjectId,
 )
 
 
-class TestExceptionStatusCodes:
-
-    def test_user_already_exists(self):
+class TestExceptionHierarchy:
+    def test_user_already_exists_is_base(self):
         exc = UserAlreadyExists()
+        assert isinstance(exc, BaseAppException)
         assert exc.status_code == status.HTTP_409_CONFLICT
 
-    def test_user_not_found_default(self):
+    def test_user_not_found_default_detail(self):
         exc = UserNotFound()
         assert exc.status_code == status.HTTP_404_NOT_FOUND
+        assert "не знайдено" in exc.detail
 
     def test_user_not_found_custom_detail(self):
-        exc = UserNotFound("Custom message")
-        assert exc.detail == "Custom message"
-
-    def test_invalid_credentials(self):
-        exc = InvalidCredentials()
-        assert exc.status_code == status.HTTP_401_UNAUTHORIZED
-        assert "WWW-Authenticate" in exc.headers
-
-    def test_token_expired(self):
-        exc = TokenExpired()
-        assert exc.status_code == status.HTTP_401_UNAUTHORIZED
-
-    def test_invalid_token(self):
-        exc = InvalidToken()
-        assert exc.status_code == status.HTTP_401_UNAUTHORIZED
-
-    def test_permission_denied(self):
-        exc = PermissionDenied()
-        assert exc.status_code == status.HTTP_403_FORBIDDEN
+        exc = UserNotFound(detail="Нестандартне повідомлення")
+        assert exc.detail == "Нестандартне повідомлення"
 
     def test_account_not_found(self):
         exc = AccountNotFound()
@@ -63,13 +47,25 @@ class TestExceptionStatusCodes:
         exc = InsufficientFunds()
         assert exc.status_code == status.HTTP_400_BAD_REQUEST
 
-    def test_currency_mismatch(self):
-        exc = CurrencyMismatch()
-        assert exc.status_code == status.HTTP_400_BAD_REQUEST
+    def test_invalid_credentials_has_www_authenticate(self):
+        exc = InvalidCredentials()
+        assert exc.status_code == status.HTTP_401_UNAUTHORIZED
+        assert exc.headers is not None
+        assert "WWW-Authenticate" in exc.headers
 
-    def test_self_transfer_not_allowed(self):
-        exc = SelfTransferNotAllowed()
+    def test_forbidden_default(self):
+        exc = Forbidden()
+        assert exc.status_code == status.HTTP_403_FORBIDDEN
+        assert "заборонено" in exc.detail
+
+    def test_forbidden_custom(self):
+        exc = Forbidden("Тільки адміністратор")
+        assert exc.detail == "Тільки адміністратор"
+
+    def test_invalid_object_id(self):
+        exc = InvalidObjectId("user_id")
         assert exc.status_code == status.HTTP_400_BAD_REQUEST
+        assert "user_id" in exc.detail
 
     def test_transaction_not_found(self):
         exc = TransactionNotFound()
@@ -79,21 +75,6 @@ class TestExceptionStatusCodes:
         exc = RequestNotFound()
         assert exc.status_code == status.HTTP_404_NOT_FOUND
 
-    def test_all_are_app_exceptions(self):
-        exceptions = [
-            UserAlreadyExists(),
-            UserNotFound(),
-            InvalidCredentials(),
-            TokenExpired(),
-            InvalidToken(),
-            PermissionDenied(),
-            AccountNotFound(),
-            AccountBlocked(),
-            InsufficientFunds(),
-            CurrencyMismatch(),
-            SelfTransferNotAllowed(),
-            TransactionNotFound(),
-            RequestNotFound(),
-        ]
-        for exc in exceptions:
-            assert isinstance(exc, AppException), f"{type(exc).__name__} не є AppException"
+    def test_user_inactive(self):
+        exc = UserInactive()
+        assert exc.status_code == status.HTTP_403_FORBIDDEN

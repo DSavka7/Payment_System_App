@@ -1,10 +1,12 @@
+"""Pydantic-схеми для сутності Транзакція."""
 from pydantic import BaseModel, Field
 from datetime import datetime
 from typing import Optional
 
 
 class TransactionBase(BaseModel):
-    """Базові поля транзакції."""
+    """Базова схема транзакції."""
+
     from_account_id: str
     to_account_id: Optional[str] = None
     amount: float = Field(..., gt=0)
@@ -17,11 +19,13 @@ class TransactionBase(BaseModel):
 
 class TransactionCreate(TransactionBase):
     """Схема для створення транзакції."""
+
     is_income: bool = False
 
 
 class TransactionInDB(TransactionBase):
-    """Внутрішнє представлення транзакції."""
+    """Внутрішня схема транзакції з полями БД."""
+
     id: Optional[str] = None
     status: str = "success"
     is_income: bool = False
@@ -29,7 +33,8 @@ class TransactionInDB(TransactionBase):
 
 
 class TransactionResponse(TransactionBase):
-    """Публічне представлення транзакції."""
+    """Схема відповіді з даними транзакції."""
+
     id: str
     status: str
     is_income: bool
@@ -37,11 +42,3 @@ class TransactionResponse(TransactionBase):
 
     class Config:
         from_attributes = True
-
-
-class PaginatedTransactions(BaseModel):
-    """Відповідь з пагінацією для списку транзакцій."""
-    items: list[TransactionResponse]
-    total: int
-    limit: int
-    offset: int

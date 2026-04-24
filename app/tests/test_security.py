@@ -1,73 +1,53 @@
-
+"""
+Юніт-тести для модуля безпеки (хешування, JWT).
+"""
 import pytest
-from app.core.security import (
-    hash_password,
-    verify_password,
-    create_access_token,
-    create_refresh_token,
-    decode_token,
-    get_user_id_from_token,
-)
-from app.core.exceptions import TokenExpired, InvalidToken
+from unittest.mock import patch
+from datetime import timedelta
+
+from app.core.security import hash_password, verify_password, create_access_token, decode_access_token
 
 
 class TestPasswordHashing:
-    """Тести хешування паролів."""
-
-    def test_hash_password_returns_string(self):
-        hashed = hash_password("mypassword123")
-        assert isinstance(hashed, str)
-
-    def test_hash_is_not_plaintext(self):
-        hashed = hash_password("mypassword123")
-        assert hashed != "mypassword123"
+    def test_hash_is_not_plain(self):
+        hashed = hash_password("MySecret@1")
+        assert hashed != "MySecret@1"
 
     def test_verify_correct_password(self):
-        hashed = hash_password("securepass")
-        assert verify_password("securepass", hashed) is True
+        hashed = hash_password("MySecret@1")
+        assert verify_password("MySecret@1", hashed) is True
 
     def test_verify_wrong_password(self):
-        hashed = hash_password("securepass")
-        assert verify_password("wrongpass", hashed) is False
+        hashed = hash_password("MySecret@1")
+        assert verify_password("WrongPass", hashed) is False
 
-    def test_same_password_different_hashes(self):
-        h1 = hash_password("same")
-        h2 = hash_password("same")
+    def test_different_hashes_for_same_password(self):
+        # bcrypt генерує різну сіль кожного разу
+        h1 = hash_password("MySecret@1")
+        h2 = hash_password("MySecret@1")
         assert h1 != h2
 
 
 class TestJWT:
-    """Тести JWT access та refresh токенів."""
-
-    def test_create_and_decode_access_token(self):
-        payload = {"sub": "user123", "role": "USER"}
-        token = create_access_token(payload)
-        decoded = decode_token(token)
+    def test_create_and_decode_token(self):
+        data = {"sub": "user123", "role": "USER"}
+        token = create_access_token(data)
+        decoded = decode_access_token(token)
+        assert decoded is not None
         assert decoded["sub"] == "user123"
         assert decoded["role"] == "USER"
 
-    def test_create_and_decode_refresh_token(self):
-        payload = {"sub": "user456", "role": "ADMIN"}
-        token = create_refresh_token(payload)
-        decoded = decode_token(token)
-        assert decoded["sub"] == "user456"
-        assert decoded["type"] == "refresh"
+    def test_expired_token_returns_none(self):
+        data = {"sub": "user123"}
+        token = create_access_token(data, expires_delta=timedelta(seconds=-1))
+        result = decode_access_token(token)
+        assert result is None
 
-    def test_access_token_has_no_refresh_type(self):
-        token = create_access_token({"sub": "u1"})
-        decoded = decode_token(token)
-        assert decoded.get("type") != "refresh"
+    def test_invalid_token_returns_none(self):
+        result = decode_access_token("completely.invalid.token")
+        assert result is None
 
-    def test_invalid_token_raises(self):
-        with pytest.raises(InvalidToken):
-            decode_token("this.is.not.valid")
-
-    def test_get_user_id_from_token(self):
-        token = create_access_token({"sub": "abc123", "role": "USER"})
-        user_id = get_user_id_from_token(token)
-        assert user_id == "abc123"
-
-    def test_get_user_id_missing_sub_raises(self):
-        token = create_access_token({"role": "USER"})
-        with pytest.raises(InvalidToken):
-            get_user_id_from_token(token)
+    def test_token_contains_exp(self):
+        token = create_access_token({"sub": "abc"})
+        decoded = decode_access_token(token)
+        assert "exp" in decoded

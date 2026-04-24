@@ -1,141 +1,179 @@
 """
-Ієрархія виключень предметної області.
-Всі класи наслідують HTTPException для зручної інтеграції з FastAPI.
+Ієрархія винятків предметної області платіжної системи.
+Всі бізнес-помилки успадковуються від BaseAppException.
 """
 from fastapi import HTTPException, status
 from typing import Optional
 
 
-# ─── Base ────────────────────────────────────────────────────────────────────
+class BaseAppException(HTTPException):
+    """Базовий виняток застосунку. Всі кастомні помилки успадковуються від нього."""
 
-class AppException(HTTPException):
-    """Базовий клас для всіх доменних виключень застосунку."""
-    pass
+    def __init__(self, status_code: int, detail: str, headers: Optional[dict] = None):
+        super().__init__(status_code=status_code, detail=detail, headers=headers)
 
 
-# ─── User ────────────────────────────────────────────────────────────────────
+# ──────────────────────────────────────────────
+# Помилки автентифікації / авторизації
+# ──────────────────────────────────────────────
 
-class UserAlreadyExists(AppException):
+class InvalidCredentials(BaseAppException):
+    """Невірний email або пароль при вході."""
+
+    def __init__(self):
+        super().__init__(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Невірні дані для входу",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+
+class TokenExpired(BaseAppException):
+    """JWT-токен прострочений."""
+
+    def __init__(self):
+        super().__init__(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Токен прострочений",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+
+class Forbidden(BaseAppException):
+    """Недостатньо прав для виконання операції."""
+
+    def __init__(self, detail: str = "Доступ заборонено"):
+        super().__init__(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=detail,
+        )
+
+
+# ──────────────────────────────────────────────
+# Помилки користувачів
+# ──────────────────────────────────────────────
+
+class UserAlreadyExists(BaseAppException):
     """Користувач з таким email вже зареєстрований."""
-    def __init__(self) -> None:
+
+    def __init__(self):
         super().__init__(
             status_code=status.HTTP_409_CONFLICT,
-            detail="Користувач з таким email вже існує / User with this email already exists",
+            detail="Користувач з таким email вже існує",
         )
 
 
-class UserNotFound(AppException):
-    """Користувача не знайдено у базі даних."""
-    def __init__(self, detail: Optional[str] = None) -> None:
+class UserNotFound(BaseAppException):
+    """Користувача не знайдено в базі даних."""
+
+    def __init__(self, detail: Optional[str] = None):
         super().__init__(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=detail or "Користувача не знайдено / User not found",
+            detail=detail or "Користувача не знайдено",
         )
 
 
-class InvalidCredentials(AppException):
-    """Невірний email або пароль під час входу."""
-    def __init__(self) -> None:
-        super().__init__(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Невірні дані для входу / Invalid credentials",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+class UserInactive(BaseAppException):
+    """Обліковий запис користувача заблоковано."""
 
-
-class TokenExpired(AppException):
-    """JWT-токен прострочено."""
-    def __init__(self) -> None:
-        super().__init__(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Токен прострочено / Token has expired",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-
-
-class InvalidToken(AppException):
-    """JWT-токен недійсний або підроблений."""
-    def __init__(self) -> None:
-        super().__init__(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Недійсний токен / Invalid token",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-
-
-class PermissionDenied(AppException):
-    """Недостатньо прав для виконання операції."""
-    def __init__(self) -> None:
+    def __init__(self):
         super().__init__(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Доступ заборонено / Permission denied",
+            detail="Обліковий запис заблоковано",
         )
 
 
-# ─── Account ─────────────────────────────────────────────────────────────────
+# ──────────────────────────────────────────────
+# Помилки рахунків
+# ──────────────────────────────────────────────
 
-class AccountNotFound(AppException):
-    """Рахунок не знайдено у базі даних."""
-    def __init__(self) -> None:
+class AccountNotFound(BaseAppException):
+    """Банківський рахунок не знайдено."""
+
+    def __init__(self):
         super().__init__(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Рахунок не знайдено / Account not found",
+            detail="Рахунок не знайдено",
         )
 
 
-class AccountBlocked(AppException):
-    """Рахунок заблоковано і не може брати участь у операціях."""
-    def __init__(self) -> None:
+class AccountBlocked(BaseAppException):
+    """Рахунок заблоковано і не може виконувати операції."""
+
+    def __init__(self):
         super().__init__(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Рахунок заблоковано / Account is blocked",
+            detail="Рахунок заблоковано",
         )
 
 
-class InsufficientFunds(AppException):
-    """На рахунку недостатньо коштів для виконання операції."""
-    def __init__(self) -> None:
+class InsufficientFunds(BaseAppException):
+    """Недостатньо коштів для виконання транзакції."""
+
+    def __init__(self):
         super().__init__(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Недостатньо коштів на рахунку / Insufficient funds",
+            detail="Недостатньо коштів на рахунку",
         )
 
 
-class CurrencyMismatch(AppException):
-    """Валюти рахунків не збігаються при переказі."""
-    def __init__(self) -> None:
-        super().__init__(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Валюти рахунків не збігаються / Currency mismatch between accounts",
-        )
+# ──────────────────────────────────────────────
+# Помилки транзакцій
+# ──────────────────────────────────────────────
 
-
-class SelfTransferNotAllowed(AppException):
-    """Переказ на той самий рахунок заборонено."""
-    def __init__(self) -> None:
-        super().__init__(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Переказ на той самий рахунок заборонено / Self-transfer is not allowed",
-        )
-
-
-# ─── Transaction ─────────────────────────────────────────────────────────────
-
-class TransactionNotFound(AppException):
+class TransactionNotFound(BaseAppException):
     """Транзакцію не знайдено."""
-    def __init__(self) -> None:
+
+    def __init__(self):
         super().__init__(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Транзакцію не знайдено / Transaction not found",
+            detail="Транзакцію не знайдено",
         )
 
 
-# ─── Request ─────────────────────────────────────────────────────────────────
+class InvalidTransactionAmount(BaseAppException):
+    """Некоректна сума транзакції."""
 
-class RequestNotFound(AppException):
-    """Запит не знайдено."""
-    def __init__(self) -> None:
+    def __init__(self, detail: str = "Некоректна сума транзакції"):
+        super().__init__(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=detail,
+        )
+
+
+# ──────────────────────────────────────────────
+# Помилки запитів (requests)
+# ──────────────────────────────────────────────
+
+class RequestNotFound(BaseAppException):
+    """Запит на операцію не знайдено."""
+
+    def __init__(self):
         super().__init__(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Запит не знайдено / Request not found",
+            detail="Запит не знайдено",
+        )
+
+
+class RequestAlreadyResolved(BaseAppException):
+    """Запит вже було оброблено адміністратором."""
+
+    def __init__(self):
+        super().__init__(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Запит вже було оброблено",
+        )
+
+
+# ──────────────────────────────────────────────
+# Помилки валідації
+# ──────────────────────────────────────────────
+
+class InvalidObjectId(BaseAppException):
+    """Некоректний формат MongoDB ObjectId."""
+
+    def __init__(self, field: str = "id"):
+        super().__init__(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Некоректний формат ідентифікатора: {field}",
         )

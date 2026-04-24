@@ -1,4 +1,7 @@
-
+"""
+Модуль підключення до MongoDB через Motor (асинхронний драйвер).
+Реалізує патерн Singleton для підключення до бази даних.
+"""
 import pymongo
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
@@ -13,127 +16,128 @@ logger = get_logger(__name__)
 
 
 class Database:
+    """
+    Singleton-клас для управління підключенням до MongoDB.
+    Забезпечує єдине підключення протягом всього часу роботи застосунку.
+    """
 
     client: AsyncIOMotorClient
     db: AsyncIOMotorDatabase
 
-    def __init__(self) -> None:
+    def __init__(self):
+        """Ініціалізує підключення до MongoDB з налаштувань конфігурації."""
         self.client = AsyncIOMotorClient(settings.mongodb_url)
         self.db = self.client[settings.mongodb_db_name]
 
-    # ── Колекції ──────────────────────────────────────────────────────────────
+    # ──────────────────────────────────────────────
+    # Властивості для зручного доступу до колекцій
+    # ──────────────────────────────────────────────
 
     @property
     def users(self):
+        """Колекція користувачів."""
         return self.db.users
 
     @property
     def accounts(self):
+        """Колекція банківських рахунків."""
         return self.db.accounts
 
     @property
     def transactions(self):
+        """Колекція транзакцій."""
         return self.db.transactions
 
     @property
     def requests(self):
+        """Колекція запитів на операції."""
         return self.db.requests
 
-    @property
-    def refresh_tokens(self):
-        return self.db.refresh_tokens
-
-    # ── Індекси ───────────────────────────────────────────────────────────────
-
     async def create_indexes(self) -> None:
-        logger.info("Перевірка/створення індексів MongoDB...")
+        """
+        Безпечно створює або перевіряє індекси у всіх колекціях.
+        При наявності конфлікту — пропускає індекс з попередженням.
+        """
+        logger.info("Початок створення/перевірки індексів у MongoDB...")
 
         try:
-
-            old_index_names = ["unique_user_card", "user_id_1_card_number_1"]
-            for idx_name in old_index_names:
-                try:
-                    await self.accounts.drop_index(idx_name)
-                    logger.info(f"Старий індекс '{idx_name}' успішно видалено")
-                except Exception:
-                    pass
-
-
+            await self.users.create_index("email", unique=True, name="unique_email")
             await self.accounts.create_index(
-                [("user_id", pymongo.ASCENDING), ("card_number_full", pymongo.ASCENDING)],
+                [("user_id", pymongo.ASCENDING), ("card_number", pymongo.ASCENDING)],
                 unique=True,
-                name="unique_user_card_full",
-                background=True
+                name="unique_user_card",
             )
 
-            # Базовые индексы
-            await self.users.create_index("email", unique=True, name="unique_email")
-
-            simple_indexes = [
+            indexes = [
                 ("users", "role", "idx_user_role"),
-                ("users", "status", "idx_user_status"),
                 ("accounts", "user_id", "idx_account_user"),
                 ("accounts", "status", "idx_account_status"),
-                ("transactions", "created_at", "idx_tx_date"),
-                ("transactions", "from_account_id", "idx_tx_from"),
-                ("transactions", "to_account_id", "idx_tx_to"),
-                ("requests", "created_at", "idx_req_date"),
+                ("transactions", "created_at", "idx_transaction_date"),
+                ("transactions", "from_account_id", "idx_from_account"),
+                ("transactions", "to_account_id", "idx_to_account"),
+                (
+                    "requests",
+                    [("user_id", pymongo.ASCENDING), ("status", pymongo.ASCENDING)],
+                    "idx_request_user_status",
+                ),
+                ("requests", "created_at", "idx_request_date"),
             ]
 
-            for col_name, key, name in simple_indexes:
-                col = getattr(self, col_name)
+            for collection_name, key, name in indexes:
+                collection = getattr(self, collection_name)
                 try:
-                    await col.create_index(key, name=name, background=True)
+                    if isinstance(key, list):
+                        await collection.create_index(key, name=name, background=True)
+                    else:
+                        await collection.create_index(key, name=name, background=True)
                 except Exception as exc:
-                    if "already exists" not in str(exc).lower():
-                        logger.warning("Помилка індексу %s: %s", name, exc)
-
-
-            try:
-                await self.requests.create_index(
-                    [("user_id", pymongo.ASCENDING), ("status", pymongo.ASCENDING)],
-                    name="idx_req_user_status",
-                    background=True
-                )
-            except Exception:
-                pass
+                    if "IndexOptionsConflict" in str(exc) or "already exists" in str(exc):
+                        logger.debug("Індекс %s вже існує — пропускаємо", name)
+                    else:
+                        logger.error("Помилка при створенні індексу %s: %s", name, exc)
 
             logger.info("Індекси успішно перевірені / створені")
 
         except Exception as exc:
-            logger.error("Критична помилка при створенні індексів: %s", exc)
-            raise
+            logger.critical("Загальна помилка при створенні індексів: %s", exc)
 
     async def close(self) -> None:
+        """Закриває підключення до MongoDB."""
         if self.client:
             self.client.close()
             logger.info("Підключення до MongoDB закрито")
 
 
-# ── Глобальний singleton ───────────────────────────────────────────────────────
+# Глобальний Singleton-екземпляр бази даних
 db = Database()
 
 
-# ── Lifespan ──────────────────────────────────────────────────────────────────
-
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
-    # Startup
+    """
+    Lifespan-менеджер FastAPI.
+    Виконує ініціалізацію при старті та очищення при зупинці.
+    """
+    # === STARTUP ===
     try:
         await db.client.admin.command("ping")
-        logger.info("Успішно підключено до MongoDB (%s)", settings.mongodb_db_name)
+        logger.info("Успішно підключено до MongoDB: %s", settings.mongodb_db_name)
         await db.create_indexes()
     except Exception as exc:
-        logger.critical("Не вдалося підключитися до MongoDB: %s", exc)
+        logger.critical("Критична помилка підключення до MongoDB: %s", exc)
         raise
 
     yield
 
-    # Shutdown
+    # === SHUTDOWN ===
     await db.close()
 
 
-# ── Dependency Injection ───────────────────────────────────────────────────────
-
 async def get_db() -> AsyncIOMotorDatabase:
+    """
+    Dependency Injection для отримання екземпляра бази даних.
+
+    Returns:
+        Асинхронний об'єкт бази даних Motor.
+    """
     return db.db
