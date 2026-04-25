@@ -1,6 +1,7 @@
 """
 Репозиторій для роботи з колекцією accounts у MongoDB.
 """
+import random
 from bson import ObjectId
 from bson.errors import InvalidId
 from motor.motor_asyncio import AsyncIOMotorCollection
@@ -15,6 +16,16 @@ from app.models.account_models import AccountCreate, AccountInDB, AccountUpdate
 logger = get_logger(__name__)
 
 
+def _generate_card_number() -> str:
+    """Генерує випадковий 16-значний номер картки."""
+    return ''.join([str(random.randint(0, 9)) for _ in range(16)])
+
+
+def _mask_card_number(full: str) -> str:
+    """Маскує номер: '1234567890123456' -> '1234 **** **** 5678'."""
+    return f"{full[:4]} **** **** {full[12:]}"
+
+
 class AccountRepository:
     """Репозиторій для CRUD-операцій з банківськими рахунками."""
 
@@ -22,9 +33,13 @@ class AccountRepository:
         self.collection = collection
 
     async def create(self, account: AccountCreate) -> AccountInDB:
-        """Створює новий рахунок у базі даних."""
+        """Створює новий рахунок з автоматично згенерованим номером картки."""
         account_dict = account.model_dump()
         account_dict["user_id"] = ObjectId(account_dict["user_id"])
+
+        full_number = _generate_card_number()
+        account_dict["card_number"] = _mask_card_number(full_number)
+        account_dict["card_number_full"] = full_number
         account_dict["status"] = "active"
         account_dict["created_at"] = datetime.utcnow()
 
@@ -35,6 +50,7 @@ class AccountRepository:
             id=str(result.inserted_id),
             user_id=str(account_dict["user_id"]),
             card_number=account_dict["card_number"],
+            card_number_full=full_number,
             currency=account_dict["currency"],
             balance=account_dict["balance"],
             status=account_dict["status"],
@@ -51,16 +67,14 @@ class AccountRepository:
         doc = await self.collection.find_one({"_id": oid})
         if not doc:
             return None
+        return self._doc_to_model(doc)
 
-        return AccountInDB(
-            id=str(doc["_id"]),
-            user_id=str(doc["user_id"]),
-            card_number=doc["card_number"],
-            currency=doc["currency"],
-            balance=doc["balance"],
-            status=doc["status"],
-            created_at=doc["created_at"],
-        )
+    async def get_by_card_number(self, card_number: str) -> Optional[AccountInDB]:
+        """Знаходить рахунок за повним номером картки."""
+        doc = await self.collection.find_one({"card_number_full": card_number})
+        if not doc:
+            return None
+        return self._doc_to_model(doc)
 
     async def get_by_user_id(self, user_id: str) -> List[AccountInDB]:
         """Повертає всі рахунки користувача."""
@@ -71,19 +85,7 @@ class AccountRepository:
 
         cursor = self.collection.find({"user_id": oid})
         docs = await cursor.to_list(length=100)
-
-        return [
-            AccountInDB(
-                id=str(doc["_id"]),
-                user_id=str(doc["user_id"]),
-                card_number=doc["card_number"],
-                currency=doc["currency"],
-                balance=doc["balance"],
-                status=doc["status"],
-                created_at=doc["created_at"],
-            )
-            for doc in docs
-        ]
+        return [self._doc_to_model(doc) for doc in docs]
 
     async def update(self, account_id: str, update_data: AccountUpdate) -> Optional[AccountInDB]:
         """Оновлює дані рахунку."""
@@ -101,14 +103,18 @@ class AccountRepository:
             return None
 
         logger.info("Оновлено рахунок id=%s", account_id)
-        return AccountInDB(
-            id=str(result["_id"]),
-            user_id=str(result["user_id"]),
-            card_number=result["card_number"],
-            currency=result["currency"],
-            balance=result["balance"],
-            status=result["status"],
-            created_at=result["created_at"],
+        return self._doc_to_model(result)
+
+    async def update_balance(self, account_id: str, new_balance: float) -> None:
+        """Оновлює баланс рахунку."""
+        try:
+            oid = ObjectId(account_id)
+        except InvalidId:
+            raise InvalidObjectId("account_id")
+
+        await self.collection.update_one(
+            {"_id": oid},
+            {"$set": {"balance": new_balance}},
         )
 
     async def delete(self, account_id: str) -> bool:
@@ -120,3 +126,17 @@ class AccountRepository:
 
         result = await self.collection.delete_one({"_id": oid})
         return result.deleted_count > 0
+
+    @staticmethod
+    def _doc_to_model(doc: dict) -> AccountInDB:
+        """Конвертує документ MongoDB у Pydantic-модель."""
+        return AccountInDB(
+            id=str(doc["_id"]),
+            user_id=str(doc["user_id"]),
+            card_number=doc.get("card_number", "**** **** **** ****"),
+            card_number_full=doc.get("card_number_full"),
+            currency=doc["currency"],
+            balance=doc["balance"],
+            status=doc["status"],
+            created_at=doc["created_at"],
+        )

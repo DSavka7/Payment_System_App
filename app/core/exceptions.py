@@ -1,7 +1,4 @@
-"""
-Ієрархія винятків предметної області платіжної системи.
-Всі бізнес-помилки успадковуються від BaseAppException.
-"""
+
 from fastapi import HTTPException, status
 from typing import Optional
 
@@ -19,7 +16,6 @@ class BaseAppException(HTTPException):
 
 class InvalidCredentials(BaseAppException):
     """Невірний email або пароль при вході."""
-
     def __init__(self):
         super().__init__(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -30,7 +26,6 @@ class InvalidCredentials(BaseAppException):
 
 class TokenExpired(BaseAppException):
     """JWT-токен прострочений."""
-
     def __init__(self):
         super().__init__(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -41,7 +36,6 @@ class TokenExpired(BaseAppException):
 
 class Forbidden(BaseAppException):
     """Недостатньо прав для виконання операції."""
-
     def __init__(self, detail: str = "Доступ заборонено"):
         super().__init__(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -55,7 +49,6 @@ class Forbidden(BaseAppException):
 
 class UserAlreadyExists(BaseAppException):
     """Користувач з таким email вже зареєстрований."""
-
     def __init__(self):
         super().__init__(
             status_code=status.HTTP_409_CONFLICT,
@@ -65,7 +58,6 @@ class UserAlreadyExists(BaseAppException):
 
 class UserNotFound(BaseAppException):
     """Користувача не знайдено в базі даних."""
-
     def __init__(self, detail: Optional[str] = None):
         super().__init__(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -75,7 +67,6 @@ class UserNotFound(BaseAppException):
 
 class UserInactive(BaseAppException):
     """Обліковий запис користувача заблоковано."""
-
     def __init__(self):
         super().__init__(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -89,7 +80,6 @@ class UserInactive(BaseAppException):
 
 class AccountNotFound(BaseAppException):
     """Банківський рахунок не знайдено."""
-
     def __init__(self):
         super().__init__(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -99,7 +89,6 @@ class AccountNotFound(BaseAppException):
 
 class AccountBlocked(BaseAppException):
     """Рахунок заблоковано і не може виконувати операції."""
-
     def __init__(self):
         super().__init__(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -109,11 +98,28 @@ class AccountBlocked(BaseAppException):
 
 class InsufficientFunds(BaseAppException):
     """Недостатньо коштів для виконання транзакції."""
-
     def __init__(self):
         super().__init__(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Недостатньо коштів на рахунку",
+        )
+
+
+class CurrencyMismatch(BaseAppException):
+    """Валюти рахунків не збігаються."""
+    def __init__(self):
+        super().__init__(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Переказ між рахунками різних валют не дозволяється",
+        )
+
+
+class SelfTransferNotAllowed(BaseAppException):
+    """Переказ на той самий рахунок заборонено."""
+    def __init__(self):
+        super().__init__(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Не можна переказувати кошти на той самий рахунок",
         )
 
 
@@ -123,7 +129,6 @@ class InsufficientFunds(BaseAppException):
 
 class TransactionNotFound(BaseAppException):
     """Транзакцію не знайдено."""
-
     def __init__(self):
         super().__init__(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -133,7 +138,6 @@ class TransactionNotFound(BaseAppException):
 
 class InvalidTransactionAmount(BaseAppException):
     """Некоректна сума транзакції."""
-
     def __init__(self, detail: str = "Некоректна сума транзакції"):
         super().__init__(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -147,7 +151,6 @@ class InvalidTransactionAmount(BaseAppException):
 
 class RequestNotFound(BaseAppException):
     """Запит на операцію не знайдено."""
-
     def __init__(self):
         super().__init__(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -157,7 +160,6 @@ class RequestNotFound(BaseAppException):
 
 class RequestAlreadyResolved(BaseAppException):
     """Запит вже було оброблено адміністратором."""
-
     def __init__(self):
         super().__init__(
             status_code=status.HTTP_409_CONFLICT,
@@ -171,7 +173,6 @@ class RequestAlreadyResolved(BaseAppException):
 
 class InvalidObjectId(BaseAppException):
     """Некоректний формат MongoDB ObjectId."""
-
     def __init__(self, field: str = "id"):
         super().__init__(
             status_code=status.HTTP_400_BAD_REQUEST,

@@ -1,10 +1,8 @@
-"""
-Роутер для управління користувачами.
-Обробляє HTTP-запити реєстрації, входу та отримання профілю.
-"""
+
 from fastapi import APIRouter, Depends, status
 from fastapi.security import OAuth2PasswordRequestForm
 
+from app.core.dependencies import get_current_user_id
 from app.models.user_models import UserCreate, UserResponse, UserUpdate
 from app.services.user_service import UserService, get_user_service
 
@@ -34,8 +32,20 @@ async def login(
     service: UserService = Depends(get_user_service),
 ):
     """Автентифікує користувача та повертає JWT-токен доступу."""
-    # form_data.username = email, form_data.password = пароль
     return await service.authenticate(form_data.username, form_data.password)
+
+
+@router.get(
+    "/me",
+    response_model=UserResponse,
+    summary="Отримання даних поточного користувача",
+)
+async def get_me(
+    user_id: str = Depends(get_current_user_id),
+    service: UserService = Depends(get_user_service),
+) -> UserResponse:
+    """Повертає дані авторизованого користувача з JWT-токена."""
+    return await service.get_user(user_id)
 
 
 @router.get(

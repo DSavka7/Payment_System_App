@@ -4,7 +4,7 @@
 from bson import ObjectId
 from bson.errors import InvalidId
 from motor.motor_asyncio import AsyncIOMotorCollection
-from typing import Optional, List
+from typing import Optional, List, Tuple
 from datetime import datetime
 
 from app.core.exceptions import InvalidObjectId
@@ -41,10 +41,7 @@ class TransactionRepository:
         result = await self.collection.insert_one(tx_dict)
         logger.info(
             "Створено транзакцію id=%s, тип=%s, сума=%s %s",
-            result.inserted_id,
-            tx_dict["type"],
-            tx_dict["amount"],
-            tx_dict["currency"],
+            result.inserted_id, tx_dict["type"], tx_dict["amount"], tx_dict["currency"],
         )
 
         return TransactionInDB(
@@ -72,34 +69,37 @@ class TransactionRepository:
         doc = await self.collection.find_one({"_id": oid})
         if not doc:
             return None
-
         return self._doc_to_model(doc)
 
-    async def get_by_account(self, account_id: str, limit: int = 50, offset: int = 0) -> List[TransactionInDB]:
+    async def get_by_account(
+        self,
+        account_id: str,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> Tuple[List[TransactionInDB], int]:
         """
-        Повертає транзакції рахунку з підтримкою пагінації.
-
-        Args:
-            account_id: ObjectId рахунку.
-            limit: Максимальна кількість записів.
-            offset: Зміщення (для пагінації).
+        Повертає транзакції рахунку з пагінацією.
+        Повертає кортеж (список транзакцій, загальна кількість).
         """
         try:
             oid = ObjectId(account_id)
         except InvalidId:
             raise InvalidObjectId("account_id")
 
+        query = {"$or": [{"from_account_id": oid}, {"to_account_id": oid}]}
+
+        # Рахуємо загальну кількість для пагінації
+        total = await self.collection.count_documents(query)
+
         cursor = (
-            self.collection.find(
-                {"$or": [{"from_account_id": oid}, {"to_account_id": oid}]}
-            )
+            self.collection.find(query)
             .sort("created_at", -1)
             .skip(offset)
             .limit(limit)
         )
 
         docs = await cursor.to_list(length=limit)
-        return [self._doc_to_model(doc) for doc in docs]
+        return [self._doc_to_model(doc) for doc in docs], total
 
     @staticmethod
     def _doc_to_model(doc: dict) -> TransactionInDB:
