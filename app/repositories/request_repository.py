@@ -38,9 +38,7 @@ class RequestRepository:
         result = await self.collection.insert_one(req_dict)
         logger.info(
             "Створено запит id=%s, тип=%s від user_id=%s",
-            result.inserted_id,
-            request.type,
-            request.user_id,
+            result.inserted_id, request.type, request.user_id,
         )
 
         return RequestInDB(
@@ -67,15 +65,10 @@ class RequestRepository:
             return None
         return self._doc_to_model(doc)
 
-    async def get_by_user(self, user_id: str, limit: int = 50, offset: int = 0) -> List[RequestInDB]:
-        """
-        Повертає запити користувача з підтримкою пагінації.
-
-        Args:
-            user_id: ObjectId користувача.
-            limit: Максимальна кількість записів.
-            offset: Зміщення для пагінації.
-        """
+    async def get_by_user(
+        self, user_id: str, limit: int = 50, offset: int = 0
+    ) -> List[RequestInDB]:
+        """Повертає запити конкретного користувача з пагінацією."""
         try:
             oid = ObjectId(user_id)
         except InvalidId:
@@ -90,14 +83,37 @@ class RequestRepository:
         docs = await cursor.to_list(length=limit)
         return [self._doc_to_model(doc) for doc in docs]
 
-    async def update_status(self, request_id: str, update: RequestUpdate) -> Optional[RequestInDB]:
+    async def get_all(
+        self,
+        status_filter: Optional[str] = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> List[RequestInDB]:
         """
-        Оновлює статус запиту адміністратором.
+        Повертає всі запити всіх користувачів (для адміністратора, PB-17).
 
         Args:
-            request_id: ObjectId запиту.
-            update: Новий статус та коментар адміністратора.
+            status_filter: Фільтр за статусом (pending / approved / rejected).
+            limit: Максимальна кількість записів.
+            offset: Зміщення для пагінації.
         """
+        query = {}
+        if status_filter:
+            query["status"] = status_filter
+
+        cursor = (
+            self.collection.find(query)
+            .sort("created_at", -1)
+            .skip(offset)
+            .limit(limit)
+        )
+        docs = await cursor.to_list(length=limit)
+        return [self._doc_to_model(doc) for doc in docs]
+
+    async def update_status(
+        self, request_id: str, update: RequestUpdate
+    ) -> Optional[RequestInDB]:
+        """Оновлює статус запиту адміністратором."""
         try:
             oid = ObjectId(request_id)
         except InvalidId:

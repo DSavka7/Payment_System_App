@@ -49,13 +49,13 @@
         <a class="nav-item" data-page="admin-requests" href="#">
           <svg class="nav-item__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2M9 5a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2M9 5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2"/></svg>
           <span>Запити</span>
-          <span class="nav-badge" id="nav-requests-badge">0</span>
+          <span class="nav-badge" id="nav-requests-badge"></span>
         </a>
       </nav>
 
       <div class="sidebar__bottom">
         <div class="user-chip">
-          <div class="user-chip__avatar" id="admin-avatar" style="background: linear-gradient(135deg,#ef4444,#b91c1c)">A</div>
+          <div class="user-chip__avatar" id="admin-avatar" style="background:linear-gradient(135deg,#ef4444,#b91c1c)">A</div>
           <div class="user-chip__info">
             <span class="user-chip__email" id="admin-email">—</span>
             <span class="user-chip__role" style="color:var(--red)">ADMIN</span>
@@ -68,6 +68,7 @@
     </aside>
 
     <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
     <!-- Main -->
     <main class="main-content">
       <div class="topbar">
@@ -75,17 +76,17 @@
         <h1 class="topbar__title" id="admin-page-title">Панель адміністратора</h1>
         <div style="display:flex;gap:10px;align-items:center">
           <span class="admin-badge-role">ADMIN</span>
-          <a href="index.html" class="btn btn--outline btn--sm">← Портал</a>
+          <button class="btn btn--outline btn--sm" id="topbar-btn-logout">Вийти</button>
         </div>
       </div>
 
-      <!-- Overview -->
+      <!-- ── Overview ───────────────────────────────────────────────────── -->
       <section id="page-admin-overview" class="page active">
-        <div class="stats-grid stagger" id="admin-stats-grid">
+        <div class="stats-grid stagger">
           <div class="stat-card stat-card--gold">
             <div class="stat-card__label">Всього користувачів</div>
             <div class="stat-card__value" id="stat-users-total">—</div>
-            <div class="stat-card__sub">Зареєстровано</div>
+            <div class="stat-card__sub">Зареєстровано в системі</div>
           </div>
           <div class="stat-card">
             <div class="stat-card__label">Запити очікують</div>
@@ -95,25 +96,27 @@
           <div class="stat-card">
             <div class="stat-card__label">Схвалено сьогодні</div>
             <div class="stat-card__value" id="stat-approved-today" style="color:var(--green)">—</div>
-            <div class="stat-card__sub">Запитів</div>
+            <div class="stat-card__sub">Запитів оброблено</div>
           </div>
         </div>
 
         <div class="section-header" style="margin-top:32px">
-          <h2 class="section-title">Останні запити користувачів</h2>
-          <a href="#" class="btn btn--outline btn--sm" data-page="admin-requests" id="view-all-requests">Всі запити →</a>
+          <h2 class="section-title">Останні запити</h2>
+          <a href="#" class="btn btn--outline btn--sm" id="view-all-requests">Всі запити →</a>
         </div>
         <div id="admin-recent-requests">
           <div class="empty-state skeleton" style="height:200px;border-radius:12px"></div>
         </div>
       </section>
 
-      <!-- Users -->
+      <!-- ── Users ──────────────────────────────────────────────────────── -->
       <section id="page-admin-users" class="page">
         <div class="section-header">
           <h2 class="section-title">Управління користувачами</h2>
           <div class="filter-row">
-            <input class="field__input" id="user-search" type="search" placeholder="Пошук за email..." style="width:220px;padding:7px 12px;font-size:.85rem" />
+            <input class="field__input" id="user-search" type="search"
+                   placeholder="Пошук за email або телефоном…"
+                   style="width:240px;padding:7px 12px;font-size:.85rem" />
           </div>
         </div>
         <div class="admin-table-wrap">
@@ -133,10 +136,9 @@
             </tbody>
           </table>
         </div>
-        <div class="pagination" id="users-pagination"></div>
       </section>
 
-      <!-- Requests -->
+      <!-- ── Requests ───────────────────────────────────────────────────── -->
       <section id="page-admin-requests" class="page">
         <div class="section-header">
           <h2 class="section-title">Запити користувачів</h2>
@@ -156,7 +158,7 @@
     </main>
   </div>
 
-  <!-- Review Request Modal -->
+  <!-- ── Review Modal ───────────────────────────────────────────────────── -->
   <div class="modal-backdrop hidden" id="admin-modal-backdrop">
     <div class="modal" id="modal-review-request">
       <div class="modal__header">
@@ -164,14 +166,20 @@
         <button class="modal__close" id="close-review-modal">✕</button>
       </div>
 
-      <div class="review-request-info" id="review-info">
+      <div class="review-request-info">
         <div class="review-field">
           <span class="review-field__label">Тип</span>
           <span class="review-field__value" id="rv-type">—</span>
         </div>
         <div class="review-field">
+          <span class="review-field__label">Користувач</span>
+          <span class="review-field__value" id="rv-user"
+                style="font-family:var(--font-mono);font-size:.8rem;color:var(--gold)">—</span>
+        </div>
+        <div class="review-field">
           <span class="review-field__label">Рахунок</span>
-          <span class="review-field__value" id="rv-account" style="font-family:var(--font-mono);font-size:.8rem">—</span>
+          <span class="review-field__value" id="rv-account"
+                style="font-family:var(--font-mono);font-size:.75rem;word-break:break-all">—</span>
         </div>
         <div class="review-field">
           <span class="review-field__label">Повідомлення</span>
@@ -182,7 +190,7 @@
           <span class="review-field__value" id="rv-date">—</span>
         </div>
         <div class="review-field">
-          <span class="review-field__label">Поточний статус</span>
+          <span class="review-field__label">Статус</span>
           <span id="rv-status">—</span>
         </div>
       </div>
@@ -190,14 +198,17 @@
       <form id="form-review" class="form" style="margin-top:20px">
         <div class="field">
           <label class="field__label" for="rv-comment">Коментар адміністратора</label>
-          <textarea class="field__input field__textarea" id="rv-comment" rows="2" placeholder="Необов'язково..." maxlength="500"></textarea>
+          <textarea class="field__input field__textarea" id="rv-comment" rows="2"
+                    placeholder="Необов'язково…" maxlength="500"></textarea>
         </div>
         <div id="rv-error" class="alert alert--error hidden"></div>
         <div class="review-actions">
-          <button type="button" class="btn btn--outline" id="btn-reject" style="border-color:var(--red);color:var(--red)">
+          <button type="button" class="btn btn--outline" id="btn-reject"
+                  style="border-color:var(--red);color:var(--red)">
             ✕ Відхилити
           </button>
-          <button type="button" class="btn btn--primary" id="btn-approve" style="background:linear-gradient(135deg,var(--green),#2da870)">
+          <button type="button" class="btn btn--primary" id="btn-approve"
+                  style="background:linear-gradient(135deg,var(--green),#2da870)">
             ✓ Схвалити
           </button>
         </div>
@@ -208,6 +219,13 @@
   <!-- Toast -->
   <div class="toast-container" id="toast-container"></div>
 
+  <!--
+    ПОРЯДОК СКРИПТІВ ВАЖЛИВИЙ:
+    1. api.js      — HTTP-хелпери (Api object)
+    2. store.js    — Store object
+    3. ui.js       — UI object (statusBadge, formatDate, toast тощо) ← БУВ ВІДСУТНІЙ!
+    4. admin.js    — логіка адмін-панелі
+  -->
   <script src="js/api.js"></script>
   <script src="js/store.js"></script>
   <script src="js/ui.js"></script>

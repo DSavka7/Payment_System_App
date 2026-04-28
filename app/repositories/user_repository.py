@@ -5,7 +5,7 @@
 from bson import ObjectId
 from bson.errors import InvalidId
 from motor.motor_asyncio import AsyncIOMotorCollection
-from typing import Optional
+from typing import Optional, List
 from datetime import datetime
 
 from app.core.exceptions import UserAlreadyExists, InvalidObjectId
@@ -23,21 +23,11 @@ class UserRepository:
     """
 
     def __init__(self, collection: AsyncIOMotorCollection):
-        """
-        Args:
-            collection: Асинхронна колекція Motor для users.
-        """
         self.collection = collection
 
     async def create(self, user: UserCreate) -> UserInDB:
         """
         Створює нового користувача у базі даних.
-
-        Args:
-            user: Дані для створення користувача.
-
-        Returns:
-            Збережений користувач у форматі UserInDB.
 
         Raises:
             UserAlreadyExists: Якщо email вже зайнятий.
@@ -59,18 +49,7 @@ class UserRepository:
         return UserInDB.model_validate(user_dict)
 
     async def get_by_id(self, user_id: str) -> Optional[UserInDB]:
-        """
-        Знаходить користувача за його MongoDB ObjectId.
-
-        Args:
-            user_id: Рядковий ObjectId користувача.
-
-        Returns:
-            UserInDB або None якщо не знайдено.
-
-        Raises:
-            InvalidObjectId: Якщо user_id має некоректний формат.
-        """
+        """Знаходить користувача за його MongoDB ObjectId."""
         try:
             oid = ObjectId(user_id)
         except InvalidId:
@@ -84,15 +63,7 @@ class UserRepository:
         return UserInDB.model_validate(doc)
 
     async def get_by_email(self, email: str) -> Optional[UserInDB]:
-        """
-        Знаходить користувача за email.
-
-        Args:
-            email: Email-адреса для пошуку.
-
-        Returns:
-            UserInDB або None якщо не знайдено.
-        """
+        """Знаходить користувача за email."""
         doc = await self.collection.find_one({"email": email})
         if not doc:
             return None
@@ -100,17 +71,26 @@ class UserRepository:
         doc["id"] = str(doc.pop("_id"))
         return UserInDB.model_validate(doc)
 
-    async def update(self, user_id: str, update_data: UserUpdate) -> Optional[UserInDB]:
+    async def get_all(self, limit: int = 50, offset: int = 0) -> List[UserInDB]:
         """
-        Оновлює дані користувача.
+        Повертає список усіх користувачів з підтримкою пагінації.
 
         Args:
-            user_id: ObjectId користувача.
-            update_data: Поля для оновлення (лише задані).
-
-        Returns:
-            Оновлений UserInDB або None якщо не знайдено.
+            limit: Максимальна кількість записів.
+            offset: Зміщення (для пагінації).
         """
+        cursor = self.collection.find().sort("created_at", -1).skip(offset).limit(limit)
+        docs = await cursor.to_list(length=limit)
+
+        result = []
+        for doc in docs:
+            doc["id"] = str(doc.pop("_id"))
+            result.append(UserInDB.model_validate(doc))
+
+        return result
+
+    async def update(self, user_id: str, update_data: UserUpdate) -> Optional[UserInDB]:
+        """Оновлює дані користувача."""
         try:
             oid = ObjectId(user_id)
         except InvalidId:
@@ -129,15 +109,7 @@ class UserRepository:
         return UserInDB.model_validate(result)
 
     async def delete(self, user_id: str) -> bool:
-        """
-        Видаляє користувача з бази даних.
-
-        Args:
-            user_id: ObjectId користувача.
-
-        Returns:
-            True якщо запис видалено, False якщо не знайдено.
-        """
+        """Видаляє користувача з бази даних."""
         try:
             oid = ObjectId(user_id)
         except InvalidId:
