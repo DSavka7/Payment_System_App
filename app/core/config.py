@@ -1,16 +1,9 @@
-"""
-Конфігурація застосунку через Pydantic Settings.
-Всі змінні середовища завантажуються з .env файлу.
-"""
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    """
-    Налаштування застосунку.
-    Значення зчитуються з .env файлу або змінних середовища.
-    Чутливі дані (паролі, ключі) ніколи не зберігаються у коді.
-    """
+
 
     # База даних
     mongodb_url: str

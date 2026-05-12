@@ -1,31 +1,65 @@
+
 from fastapi import Depends
 from fastapi.security import OAuth2PasswordBearer
+from motor.motor_asyncio import AsyncIOMotorDatabase
 
-from app.core.security import decode_access_token
-from app.core.exceptions import InvalidCredentials, Forbidden
+from app.core.security import decode_access_token          # ← правильна назва
+from app.core.exceptions import InvalidToken, PermissionDenied, UserInactive, UserNotFound
 from app.core.constants import ADMIN_ROLE
+from app.db.database import get_db
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/users/login")
 
 
 def get_current_user_payload(token: str = Depends(oauth2_scheme)) -> dict:
-    """Декодує JWT-токен і повертає payload. Кидає 401 якщо токен невалідний."""
+
     payload = decode_access_token(token)
     if not payload:
-        raise InvalidCredentials()
+        raise InvalidToken()
     return payload
 
 
 def get_current_user_id(payload: dict = Depends(get_current_user_payload)) -> str:
-    """Витягує user_id (sub) з payload токена."""
+
     user_id = payload.get("sub")
     if not user_id:
-        raise InvalidCredentials()
+        raise InvalidToken()
     return user_id
 
 
-def require_admin(payload: dict = Depends(get_current_user_payload)) -> dict:
-    """Перевіряє що поточний користувач є адміністратором."""
-    if payload.get("role") != ADMIN_ROLE:
-        raise Forbidden()
+async def get_active_user(
+    payload: dict = Depends(get_current_user_payload),
+    db: AsyncIOMotorDatabase = Depends(get_db),
+) -> dict:
+
+    from bson import ObjectId
+    from bson.errors import InvalidId
+
+    user_id = payload.get("sub")
+    if not user_id:
+        raise InvalidToken()
+
+    try:
+        oid = ObjectId(user_id)
+    except InvalidId:
+        raise InvalidToken()
+
+    doc = await db.users.find_one({"_id": oid})
+    if not doc:
+        raise UserNotFound()
+
+    if doc.get("status") == "blocked":
+        raise UserInactive()
+
     return payload
+
+
+def require_admin(payload: dict = Depends(get_current_user_payload)) -> dict:
+
+    if payload.get("role") != ADMIN_ROLE:
+        raise PermissionDenied()
+    return payload
+
+
+def get_active_user_id(payload: dict = Depends(get_active_user)) -> str:
+    return payload.get("sub")

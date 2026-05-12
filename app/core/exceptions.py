@@ -1,13 +1,9 @@
-"""
-Ієрархія винятків предметної області платіжної системи.
-Всі бізнес-помилки успадковуються від BaseAppException.
-"""
+
 from fastapi import HTTPException, status
 from typing import Optional
 
 
 class BaseAppException(HTTPException):
-    """Базовий виняток застосунку. Всі кастомні помилки успадковуються від нього."""
 
     def __init__(self, status_code: int, detail: str, headers: Optional[dict] = None):
         super().__init__(status_code=status_code, detail=detail, headers=headers)
@@ -34,8 +30,18 @@ class InvalidToken(BaseAppException):
     def __init__(self):
         super().__init__(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Недійсний токен авторизації",
+            detail="Некоректний токен автентифікації",
             headers={"WWW-Authenticate": "Bearer"},
+        )
+
+
+class PermissionDenied(BaseAppException):
+    """Недостатньо прав (не адміністратор)."""
+
+    def __init__(self):
+        super().__init__(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Доступ заборонено: потрібні права адміністратора",
         )
 
 
@@ -54,20 +60,6 @@ class Forbidden(BaseAppException):
     """Недостатньо прав для виконання операції."""
 
     def __init__(self, detail: str = "Доступ заборонено"):
-        super().__init__(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail=detail,
-        )
-
-
-# Аліас для семантичної ясності при перевірці власника ресурсу
-PermissionDenied = Forbidden
-
-
-class PermissionDeniedError(BaseAppException):
-    """Операція заборонена: ресурс належить іншому користувачу."""
-
-    def __init__(self, detail: str = "Недостатньо прав для цієї операції"):
         super().__init__(
             status_code=status.HTTP_403_FORBIDDEN,
             detail=detail,
@@ -104,7 +96,7 @@ class UserInactive(BaseAppException):
     def __init__(self):
         super().__init__(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Обліковий запис заблоковано",
+            detail="Ваш обліковий запис заблоковано. Подайте запит на розблокування.",
         )
 
 
@@ -125,10 +117,30 @@ class AccountNotFound(BaseAppException):
 class AccountBlocked(BaseAppException):
     """Рахунок заблоковано і не може виконувати операції."""
 
+    def __init__(self, detail: str = "Рахунок заблоковано. Переказ неможливий."):
+        super().__init__(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=detail,
+        )
+
+
+class SelfTransferNotAllowed(BaseAppException):
+    """Переказ на той самий рахунок заборонено."""
+
     def __init__(self):
         super().__init__(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Рахунок заблоковано",
+            detail="Переказ на той самий рахунок не дозволяється",
+        )
+
+
+class CurrencyMismatch(BaseAppException):
+    """Переказ між рахунками з різними валютами не підтримується."""
+
+    def __init__(self):
+        super().__init__(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Переказ між рахунками різних валют не підтримується",
         )
 
 
@@ -139,26 +151,6 @@ class InsufficientFunds(BaseAppException):
         super().__init__(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Недостатньо коштів на рахунку",
-        )
-
-
-class SelfTransferNotAllowed(BaseAppException):
-    """Переказ на той самий рахунок заборонено."""
-
-    def __init__(self):
-        super().__init__(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Переказ на той самий рахунок заборонено",
-        )
-
-
-class CurrencyMismatch(BaseAppException):
-    """Валюти рахунків не збігаються."""
-
-    def __init__(self):
-        super().__init__(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Валюти рахунків не збігаються",
         )
 
 
@@ -173,6 +165,29 @@ class TransactionNotFound(BaseAppException):
         super().__init__(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Транзакцію не знайдено",
+        )
+
+
+class TransactionPendingReview(BaseAppException):
+    """Транзакція очікує на перевірку адміністратором (підозріла сума)."""
+
+    def __init__(self):
+        super().__init__(
+            status_code=status.HTTP_202_ACCEPTED,
+            detail=(
+                "Транзакція відправлена на перевірку адміністратором через велику суму. "
+                "Кошти будуть зараховані після схвалення."
+            ),
+        )
+
+
+class TransactionRejected(BaseAppException):
+    """Транзакцію відхилено адміністратором."""
+
+    def __init__(self):
+        super().__init__(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Транзакцію відхилено адміністратором",
         )
 
 

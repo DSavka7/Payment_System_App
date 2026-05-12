@@ -14,9 +14,79 @@
   <link rel="stylesheet" href="css/pages.css" />
   <link rel="stylesheet" href="css/animations.css" />
   <link rel="stylesheet" href="css/mobile.css" />
+  <link rel="stylesheet" href="css/blocked.css" />
+  <link rel="stylesheet" href="css/profile.css" />
 </head>
 <body>
 
+  <!-- ── Сторінка заблокованого користувача ─────────────────────── -->
+  <div id="blocked-wrapper" class="blocked-wrapper hidden">
+    <div class="blocked-card">
+
+      <!-- Заголовок -->
+      <div class="blocked-card__header">
+        <div class="blocked-card__icon">🔒</div>
+        <h2 class="blocked-card__title">Акаунт заблоковано</h2>
+        <div class="blocked-card__subtitle">Account suspended</div>
+        <div class="blocked-card__email" id="blocked-email"></div>
+      </div>
+
+      <!-- Причина -->
+      <div class="blocked-reason">
+        <div class="blocked-reason__label">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none"
+               stroke="currentColor" stroke-width="2.5">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="12" y1="8"  x2="12"    y2="12"/>
+            <line x1="12" y1="16" x2="12.01" y2="16"/>
+          </svg>
+          Причина блокування
+        </div>
+        <div class="blocked-reason__text" id="blocked-reason">
+          Причину не вказано
+        </div>
+      </div>
+
+      <!-- Форма запиту на розблокування -->
+      <div class="blocked-divider">Запит на розблокування</div>
+
+      <div class="blocked-request__title">Оскаржити рішення</div>
+      <p class="blocked-request__hint">
+        Якщо ви вважаєте блокування помилковим — опишіть ситуацію
+        і адміністратор розгляне ваш запит.
+      </p>
+
+      <form id="blocked-request-form" class="form" novalidate>
+        <div class="field">
+          <label class="field__label" for="blocked-request-message">
+            Повідомлення <span style="color:var(--red)">*</span>
+          </label>
+          <textarea
+            class="field__input field__textarea"
+            id="blocked-request-message"
+            rows="3"
+            placeholder="Поясніть, чому ваш акаунт слід розблокувати..."
+            maxlength="1000"
+          ></textarea>
+        </div>
+        <div id="blocked-request-error"   class="alert alert--error   hidden"></div>
+        <div id="blocked-request-success" class="alert alert--success hidden"></div>
+        <button class="btn btn--primary btn--full" type="submit">
+          <span class="btn__text">Надіслати запит на розблокування</span>
+          <span class="btn__loader hidden"></span>
+        </button>
+      </form>
+
+      <!-- Вийти -->
+      <div class="blocked-footer">
+        <button id="blocked-logout-btn" class="btn btn--ghost"
+                style="color:var(--silver);font-size:.8rem">
+          ← Вийти з акаунту
+        </button>
+      </div>
+
+    </div>
+  </div>
   <!-- ── Auth pages (shown when logged out) ─────────────────────────── -->
   <div id="auth-wrapper" class="auth-wrapper">
     <div class="auth-brand">
@@ -159,6 +229,9 @@
       </div>
 
       <nav class="sidebar__nav">
+
+
+
         <a class="nav-item active" data-page="dashboard" href="#">
           <svg class="nav-item__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
           <span>Огляд</span>
@@ -178,6 +251,13 @@
         <a class="nav-item" data-page="requests" href="#">
           <svg class="nav-item__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 0 1-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
           <span>Запити</span>
+        </a>
+        <a class="nav-item" data-page="profile" href="#">
+           <svg class="nav-item__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+           <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+            <circle cx="12" cy="7" r="4"/>
+          </svg>
+          <span>Кабінет</span>
         </a>
       </nav>
 
@@ -349,6 +429,13 @@
           <div class="empty-state">Запитів немає</div>
         </div>
       </section>
+
+      <!-- Profile / Особистий кабінет -->
+      <section id="page-profile" class="page">
+        <div id="profile-container">
+          <!-- Контент завантажується динамічно через ProfilePage.load() -->
+        </div>
+      </section>
     </main>
   </div>
 
@@ -407,8 +494,6 @@
           <label class="field__label" for="req-type">Тип запиту</label>
           <select class="field__input field__select" id="req-type" required>
             <option value="UNBLOCK">Розблокування / Unblock</option>
-            <option value="BLOCK">Блокування / Block</option>
-            <option value="LIMIT_CHANGE">Зміна ліміту / Limit change</option>
           </select>
         </div>
         <div class="field">
@@ -418,7 +503,10 @@
         </div>
         <div id="req-error" class="alert alert--error hidden"></div>
         <div id="req-success" class="alert alert--success hidden"></div>
-        <button class="btn btn--primary btn--full" type="submit">Надіслати запит</button>
+        <button class="btn btn--primary btn--full" type="submit">
+          <span class="btn__text">Надіслати запит</span>
+          <span class="btn__loader hidden"></span>
+        </button>
       </form>
     </div>
   </div>
@@ -426,15 +514,319 @@
   <!-- Toast notifications -->
   <div class="toast-container" id="toast-container"></div>
 
-  <script src="js/api.js"></script>
+  <script>
+const API_BASE = 'http://localhost:8000';
+
+const Api = (() => {
+    async function _fetch(path, options = {}, retry = true) {
+        const accessToken = Store.get('accessToken');
+        const headers = { 'Content-Type': 'application/json', ...options.headers };
+        if (accessToken) headers['Authorization'] = `Bearer ${accessToken}`;
+
+        const res = await fetch(`${API_BASE}${path}`, { ...options, headers });
+
+        if (res.status === 401 && retry) {
+            const refreshed = await _tryRefresh();
+            if (refreshed) return _fetch(path, options, false);
+            Store.clear();
+            App.showAuth();
+            throw new Error('Session expired');
+        }
+
+        if (!res.ok) {
+            let detail = `HTTP ${res.status}`;
+            try {
+                const body = await res.json();
+                detail = body.detail || JSON.stringify(body);
+            } catch {}
+            throw new Error(detail);
+        }
+
+        if (res.status === 204) return null;
+        return res.json();
+    }
+
+    async function _tryRefresh() {
+        const refreshToken = Store.get('refreshToken');
+        if (!refreshToken) return false;
+        try {
+            const data = await fetch(`${API_BASE}/users/refresh`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ refresh_token: refreshToken }),
+            }).then(r => r.json());
+            if (data.access_token) {
+                Store.set('accessToken', data.access_token);
+                return true;
+            }
+        } catch {}
+        return false;
+    }
+
+    const get  = (path)       => _fetch(path, { method: 'GET' });
+    const post = (path, body) => _fetch(path, { method: 'POST', body: JSON.stringify(body) });
+    const patch= (path, body) => _fetch(path, { method: 'PATCH', body: JSON.stringify(body) });
+    const del  = (path)       => _fetch(path, { method: 'DELETE' });
+
+    // Auth
+    const login = (email, password) => {
+        const form = new URLSearchParams({ username: email, password });
+        return fetch(`${API_BASE}/users/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: form,
+        }).then(async res => {
+            if (!res.ok) {
+                const body = await res.json().catch(() => ({}));
+                throw new Error(body.detail || `HTTP ${res.status}`);
+            }
+            return res.json();
+        });
+    };
+
+    const register = (data) => post('/users/', data);
+    const logout   = (rt)   => post('/users/logout', { refresh_token: rt });
+    const getMe    = ()     => get('/users/me');
+
+    // Accounts
+    const createAccount   = (data) => post('/accounts/', data);
+    const getUserAccounts = (uid)  => get(`/accounts/user/${uid}`);
+    const getAccount      = (id)   => get(`/accounts/${id}`);
+    const deleteAccount   = (id)   => del(`/accounts/${id}`);
+    const patchAccount    = (id, body) => patch(`/accounts/${id}`, body);
+
+    // Transfer
+    const transfer = (data) => post('/accounts/transfer', data);
+
+    // Transactions
+    const getAccountTx = (accId, limit = 50, offset = 0) =>
+        get(`/transactions/account/${accId}?limit=${limit}&offset=${offset}`);
+    const getTx = (id) => get(`/transactions/${id}`);
+
+    // Requests
+    const createRequest   = (data) => post('/requests/', data);
+    const getUserRequests = (uid)  => get(`/requests/user/${uid}`);
+
+    return {
+        login, register, logout, getMe,
+        createAccount, getUserAccounts, getAccount, deleteAccount, patchAccount,
+        transfer,
+        getAccountTx, getTx,
+        createRequest, getUserRequests,
+    };
+})();
+
+</script>
   <script src="js/store.js"></script>
   <script src="js/ui.js"></script>
   <script src="js/pages/auth.js"></script>
   <script src="js/pages/dashboard.js"></script>
-  <script src="js/pages/accounts.js"></script>
+  <script>
+
+const AccountsPage = (() => {
+
+    let _accounts = [];
+
+    function generateCardNumber() {
+        const seg = () => String(Math.floor(1000 + Math.random() * 9000));
+        return seg() + seg() + seg() + seg();
+    }
+
+    function formatDisplay(num16) {
+        return num16.replace(/(\d{4})(\d{4})(\d{4})(\d{4})/, '$1 $2 $3 $4');
+    }
+
+    function setCardNumber(num16) {
+        const input = document.getElementById('acc-card');
+        if (input) {
+            input.value = formatDisplay(num16);
+            input.dataset.full = num16;
+        }
+    }
+
+    async function load() {
+        const user = Store.getUser();
+        if (!user) return;
+
+        const grid = document.getElementById('accounts-grid');
+        grid.innerHTML = '<div class="empty-state skeleton" style="height:160px;border-radius:12px"></div>';
+
+        try {
+            _accounts = await Api.getUserAccounts(user.id);
+            _render(_accounts, grid);
+            _populateSelects(_accounts);
+        } catch (err) {
+            grid.innerHTML = `<div class="empty-state">Помилка: ${err.message}</div>`;
+        }
+    }
+
+    function _render(accounts, grid) {
+        grid.innerHTML = '';
+        if (accounts.length === 0) {
+            grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1">У вас поки немає рахунків.</div>';
+            return;
+        }
+        accounts.forEach(acc => grid.appendChild(_buildCardWrapper(acc)));
+    }
+
+    function _buildCardWrapper(acc) {
+        const wrapper = document.createElement('div');
+        wrapper.style.cssText = 'display:flex;flex-direction:column;gap:8px;';
+
+        // Bank card
+        const el = document.createElement('div');
+        el.className = `bank-card${acc.status === 'blocked' ? ' bank-card--blocked' : ''}`;
+        el.dataset.id = acc.id;
+        const sym = { UAH: '₴', USD: '$', EUR: '€' }[acc.currency] || acc.currency;
+
+        el.innerHTML = `
+            <div class="bank-card__chip"></div>
+            <div class="bank-card__number">${acc.card_number}</div>
+            <div class="bank-card__footer">
+                <div>
+                    <div class="bank-card__balance">${sym}${Number(acc.balance).toLocaleString('uk-UA', { minimumFractionDigits: 2 })}</div>
+                    <div class="bank-card__status">${acc.status === 'active' ? '● Active' : '○ Blocked'}</div>
+                </div>
+                <div class="bank-card__currency">${acc.currency}</div>
+            </div>
+        `;
+
+        el.addEventListener('click', () => {
+            if (acc.card_number_full) {
+                UI.toast(`Повний номер: ${formatDisplay(acc.card_number_full)}`, 'info', 6000);
+            }
+        });
+
+        wrapper.appendChild(el);
+
+        // Якщо рахунок активний — показати кнопку блокування
+        if (acc.status === 'active') {
+            const blockBtn = document.createElement('button');
+            blockBtn.className = 'btn btn--sm btn--outline';
+            blockBtn.style.cssText = 'border-color:var(--red);color:var(--red);width:100%;';
+            blockBtn.innerHTML = '🔒 Заблокувати рахунок';
+
+            blockBtn.addEventListener('click', async () => {
+                if (!confirm('Ви впевнені, що хочете заблокувати цей рахунок?\nДля розблокування потрібно буде подати запит адміністратору.')) return;
+
+                blockBtn.disabled = true;
+                blockBtn.textContent = '⏳ Обробка...';
+
+                try {
+                    await Api.patchAccount(acc.id, { status: 'blocked' });
+                    UI.toast('Рахунок заблоковано. Для розблокування зверніться до адміністратора.', 'info', 5000);
+                    await load();
+                    DashboardPage.load();
+                } catch (err) {
+                    UI.toast('Помилка: ' + err.message, 'error');
+                    blockBtn.disabled = false;
+                    blockBtn.innerHTML = '🔒 Заблокувати рахунок';
+                }
+            });
+
+            wrapper.appendChild(blockBtn);
+        } else {
+            // Рахунок заблокований — показати підказку про запит
+            const hint = document.createElement('div');
+            hint.style.cssText = 'font-size:.75rem;color:var(--silver);text-align:center;padding:4px 0;';
+            hint.innerHTML = '🔐 Для розблокування — <a href="#" class="hint-req-link" style="color:var(--gold)">подайте запит</a>';
+
+            hint.querySelector('.hint-req-link').addEventListener('click', (e) => {
+                e.preventDefault();
+                // Перейти на сторінку запитів та відкрити модал
+                App.navigateTo('requests');
+                setTimeout(() => UI.openModal('modal-add-request'), 100);
+            });
+
+            wrapper.appendChild(hint);
+        }
+
+        return wrapper;
+    }
+
+    function _populateSelects(accounts) {
+        // tf-from
+        const tfFrom = document.getElementById('tf-from');
+        const curVal = tfFrom.value;
+        tfFrom.innerHTML = '<option value="">— оберіть рахунок —</option>';
+        accounts.forEach(acc => {
+            const opt = document.createElement('option');
+            opt.value = acc.id;
+            const masked = acc.card_number || '**** **** **** ****';
+            opt.textContent = `${masked} · ${UI.formatMoney(acc.balance, acc.currency)}`;
+            opt.disabled = acc.status !== 'active';
+            tfFrom.appendChild(opt);
+        });
+        if (curVal) tfFrom.value = curVal;
+
+        // req-account
+        const reqAcc = document.getElementById('req-account');
+        reqAcc.innerHTML = '<option value="">— оберіть рахунок —</option>';
+        accounts.forEach(acc => {
+            const opt = document.createElement('option');
+            opt.value = acc.id;
+            opt.textContent = `${acc.card_number} (${acc.currency})`;
+            reqAcc.appendChild(opt);
+        });
+    }
+
+    document.getElementById('btn-open-add-account').addEventListener('click', () => {
+        const form = document.getElementById('form-add-account');
+        form.reset();
+        UI.hideAlert('acc-error');
+
+        const num = generateCardNumber();
+        setCardNumber(num);
+
+        UI.openModal('modal-add-account');
+    });
+
+    document.getElementById('btn-regen-card').addEventListener('click', () => {
+        const num = generateCardNumber();
+        setCardNumber(num);
+    });
+
+    document.getElementById('form-add-account').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const form = e.currentTarget;
+        const currency = document.getElementById('acc-currency').value;
+        const balance = parseFloat(document.getElementById('acc-balance').value) || 0;
+        const user = Store.getUser();
+
+        UI.clearErrors(form);
+        UI.hideAlert('acc-error');
+
+        UI.setLoading(form, true);
+
+        try {
+            await Api.createAccount({
+                user_id: user.id,
+                currency: currency,
+                balance: balance,
+            });
+
+            UI.closeModal('modal-add-account');
+            UI.toast('Рахунок успішно створено ✓', 'success');
+
+            await load();
+            DashboardPage.load();
+        } catch (err) {
+            UI.showAlert('acc-error', err.message || 'Не вдалося створити рахунок');
+        } finally {
+            UI.setLoading(form, false);
+        }
+    });
+
+    function getAccounts() { return _accounts; }
+
+    return { load, getAccounts };
+})();
+
+</script>
   <script src="js/pages/transfer.js"></script>
   <script src="js/pages/transactions.js"></script>
   <script src="js/pages/requests.js"></script>
+  <script src="js/pages/profile.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>

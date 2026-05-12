@@ -1,0 +1,154 @@
+/* ══════════════════════════════════════════════════════
+   Сторінка заблокованого користувача
+   ══════════════════════════════════════════════════════ */
+
+.blocked-wrapper {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background:
+    radial-gradient(ellipse 80% 50% at 50% 0%, rgba(239,68,68,.07) 0%, transparent 65%),
+    var(--ink);
+  position: relative;
+  z-index: 0;
+}
+
+/* Фонова сітка */
+.blocked-wrapper::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(var(--ink-3) 1px, transparent 1px),
+    linear-gradient(90deg, var(--ink-3) 1px, transparent 1px);
+  background-size: 60px 60px;
+  opacity: .2;
+  pointer-events: none;
+  z-index: -1;
+}
+
+.blocked-card {
+  background: var(--ink-1);
+  border: 1px solid rgba(239,68,68,.25);
+  border-top: 3px solid var(--red);
+  border-radius: var(--radius-lg);
+  padding: 44px 40px 36px;
+  width: 100%;
+  max-width: 500px;
+  box-shadow: 0 0 80px rgba(239,68,68,.06), var(--shadow-modal);
+  animation: fade-up .45s ease both;
+}
+
+/* Заголовок */
+.blocked-card__header {
+  text-align: center;
+  margin-bottom: 28px;
+}
+
+.blocked-card__icon {
+  font-size: 3.2rem;
+  line-height: 1;
+  margin-bottom: 14px;
+}
+
+.blocked-card__title {
+  font-family: var(--font-display);
+  font-size: 1.9rem;
+  font-weight: 400;
+  color: var(--white);
+  margin-bottom: 4px;
+}
+
+.blocked-card__subtitle {
+  font-size: .8rem;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--red);
+}
+
+.blocked-card__email {
+  font-family: var(--font-mono);
+  font-size: .82rem;
+  color: var(--silver);
+  margin-top: 8px;
+}
+
+/* Блок причини */
+.blocked-reason {
+  background: rgba(239,68,68,.07);
+  border: 1px solid rgba(239,68,68,.2);
+  border-radius: var(--radius-md);
+  padding: 16px 18px;
+  margin-bottom: 28px;
+}
+
+.blocked-reason__label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: .68rem;
+  font-weight: 600;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--red);
+  margin-bottom: 8px;
+}
+
+.blocked-reason__text {
+  font-size: .9rem;
+  color: var(--mist);
+  line-height: 1.6;
+}
+
+/* Роздільник */
+.blocked-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+  color: var(--silver);
+  font-size: .72rem;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.blocked-divider::before,
+.blocked-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--ink-3);
+}
+
+/* Секція запиту */
+.blocked-request__title {
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  font-weight: 400;
+  color: var(--white);
+  margin-bottom: 4px;
+}
+
+.blocked-request__hint {
+  font-size: .78rem;
+  color: var(--silver);
+  margin-bottom: 14px;
+  line-height: 1.5;
+}
+
+/* Нижня частина */
+.blocked-footer {
+  margin-top: 20px;
+  display: flex;
+  justify-content: center;
+}
+
+@media (max-width: 540px) {
+  .blocked-card {
+    padding: 32px 20px 28px;
+  }
+  .blocked-card__title {
+    font-size: 1.5rem;
+  }
+}

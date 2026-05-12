@@ -1,8 +1,5 @@
 """
 Сервісний шар для управління запитами на операції з рахунками.
-
-PB-10: При схваленні запиту BLOCK/UNBLOCK адміністратором автоматично
-змінюється статус відповідного рахунку.
 """
 from typing import List, Optional
 
@@ -28,12 +25,7 @@ logger = get_logger(__name__)
 
 
 class RequestService:
-    """
-    Сервіс для управління запитами на операції з рахунками.
 
-    Реалізує патерн Спостерігач (Observer): при зміні статусу запиту
-    автоматично реагує на подію та оновлює стан пов'язаного рахунку.
-    """
 
     def __init__(self, repo: RequestRepository, account_repo: AccountRepository):
         self.repo = repo
@@ -68,14 +60,7 @@ class RequestService:
         limit: int = 50,
         offset: int = 0,
     ) -> List[RequestResponse]:
-        """
-        Повертає всі запити всіх користувачів (для адміністратора, PB-17).
 
-        Args:
-            status_filter: Фільтр за статусом (pending / approved / rejected).
-            limit: Максимальна кількість записів.
-            offset: Зміщення для пагінації.
-        """
         requests = await self.repo.get_all(
             status_filter=status_filter, limit=limit, offset=offset
         )
@@ -84,13 +69,7 @@ class RequestService:
     async def update_request_status(
         self, request_id: str, update: RequestUpdate
     ) -> RequestResponse:
-        """
-        Оновлює статус запиту — тільки для адміністратора (PB-10).
 
-        При схваленні BLOCK → рахунок блокується.
-        При схваленні UNBLOCK → рахунок розблоковується.
-        Відхилення не змінює статус рахунку.
-        """
         req = await self.repo.update_status(request_id, update)
         if not req:
             raise RequestNotFound()

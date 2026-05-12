@@ -1,6 +1,5 @@
 """
 Pydantic-схеми для сутності Користувач.
-Містить моделі для створення, оновлення та відображення користувачів.
 """
 import re
 from pydantic import BaseModel, ConfigDict, Field, EmailStr, field_validator
@@ -9,41 +8,25 @@ from typing import Optional
 
 
 def validate_password_strength(password: str) -> str:
-    """
-    Перевіряє надійність пароля за розширеними критеріями.
-
-    Вимоги:
-    - Мінімум 8 символів
-    - Принаймні одна велика літера
-    - Принаймні одна мала літера
-    - Принаймні одна цифра
-    - Принаймні один спеціальний символ (!@#$%^&*()_+-=[]{}|;:,.<>?)
-    """
+    """Перевіряє надійність пароля за розширеними критеріями."""
     errors = []
-
     if len(password) < 8:
         errors.append("мінімум 8 символів")
-
     if not re.search(r"[A-Z]", password):
         errors.append("принаймні одна велика літера (A-Z)")
-
     if not re.search(r"[a-z]", password):
         errors.append("принаймні одна мала літера (a-z)")
-
     if not re.search(r"\d", password):
         errors.append("принаймні одна цифра (0-9)")
-
     if not re.search(r"[!@#$%^&*()\-_=+\[\]{}|;:,.<>?]", password):
         errors.append("принаймні один спеціальний символ (!@#$%^&*...)")
-
     if errors:
         raise ValueError(f"Пароль не відповідає вимогам: {', '.join(errors)}")
-
     return password
 
 
 class UserBase(BaseModel):
-    """Базова схема користувача з обов'язковими полями."""
+    """Базова схема користувача."""
 
     email: EmailStr
     phone: str = Field(..., pattern=r"^\+380\d{9}$")
@@ -60,13 +43,11 @@ class UserCreate(UserBase):
     @field_validator("password")
     @classmethod
     def check_password_strength(cls, v: str) -> str:
-        """Перевіряє складність пароля."""
         return validate_password_strength(v)
 
     @field_validator("first_name", "last_name")
     @classmethod
     def validate_name(cls, v: str) -> str:
-        """Перевіряє, що ім'я/прізвище містить лише літери та дефіс."""
         if not re.match(r"^[A-Za-zА-ЯҐЄІЇа-яґєії'\-\s]+$", v):
             raise ValueError("Ім'я може містити лише літери, апостроф та дефіс")
         return v.strip()
@@ -90,6 +71,8 @@ class UserInDB(UserBase):
     password_hash: str
     status: str = "active"
     created_at: datetime
+    # Причина блокування (встановлюється адміністратором)
+    block_reason: Optional[str] = None
 
 
 class UserResponse(UserBase):
@@ -100,3 +83,17 @@ class UserResponse(UserBase):
     id: str
     status: str
     created_at: datetime
+    block_reason: Optional[str] = None
+
+
+class BlockedUserInfo(BaseModel):
+    """
+    Мінімальна схема для заблокованого користувача.
+    Повертається замість повного профілю коли юзер заблокований.
+    """
+
+    id: str
+    email: str
+    status: str
+    block_reason: Optional[str] = None
+    message: str = "Ваш обліковий запис заблоковано. Зверніться до адміністратора."

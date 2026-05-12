@@ -15,220 +15,398 @@
   <link rel="stylesheet" href="css/animations.css" />
   <link rel="stylesheet" href="css/admin.css" />
   <link rel="stylesheet" href="css/mobile.css" />
+  <style>
+    /* ── Extra admin styles ── */
+    .admin-section-badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-size: .68rem; letter-spacing: .1em; font-family: var(--font-mono);
+      padding: 3px 10px; border-radius: 99px;
+      border: 1px solid; white-space: nowrap;
+    }
+    .admin-section-badge--red   { color: var(--red);   border-color: var(--red);   background: var(--red-dim); }
+    .admin-section-badge--amber { color: var(--amber); border-color: var(--amber); background: var(--amber-dim); }
+    .admin-section-badge--green { color: var(--green); border-color: var(--green); background: var(--green-dim); }
+
+    /* Stats grid colors */
+    .stat-card--red   { border-top: 2px solid var(--red) !important; }
+    .stat-card--green { border-top: 2px solid var(--green) !important; }
+    .stat-card--amber { border-top: 2px solid var(--amber) !important; }
+
+    /* Users table */
+    .user-name-cell { font-weight: 500; color: var(--white); font-size: .875rem; }
+    .user-email-cell { font-family: var(--font-mono); font-size: .78rem; color: var(--silver); }
+
+    /* Suspicious tx cards */
+    .suspicious-list { display: flex; flex-direction: column; gap: 12px; }
+    .suspicious-card {
+      background: var(--ink-1); border: 1px solid var(--ink-3);
+      border-radius: var(--radius-md); padding: 20px 24px;
+      display: grid; grid-template-columns: auto 1fr auto;
+      gap: 16px; align-items: start;
+      transition: border-color var(--t-base);
+      animation: fade-up .35s ease both;
+    }
+    .suspicious-card:hover { border-color: var(--ink-4); }
+    .suspicious-card--pending_review { border-left: 3px solid var(--amber); }
+    .suspicious-card--approved       { border-left: 3px solid var(--green); }
+    .suspicious-card--rejected       { border-left: 3px solid var(--red); }
+
+    .suspicious-card__icon {
+      width: 52px; height: 52px; border-radius: var(--radius-sm);
+      background: var(--amber-dim); border: 1px solid rgba(245,158,11,.3);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.4rem; flex-shrink: 0;
+    }
+    .suspicious-card__amount {
+      font-family: var(--font-display); font-size: 1.6rem;
+      font-weight: 300; color: var(--amber); margin-bottom: 4px;
+    }
+    .suspicious-card__meta { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 6px; }
+    .suspicious-card__accounts {
+      font-family: var(--font-mono); font-size: .72rem; color: var(--silver);
+      background: var(--ink-2); border: 1px solid var(--ink-3);
+      border-radius: var(--radius-sm); padding: 4px 10px; margin-top: 6px;
+    }
+    .suspicious-card__comment {
+      font-size: .78rem; color: var(--silver); font-style: italic;
+      border-left: 2px solid var(--ink-3); padding-left: 10px; margin-top: 8px;
+    }
+    .suspicious-card__actions { display: flex; flex-direction: column; gap: 6px; align-items: flex-end; }
+
+    /* Pagination */
+    .admin-pagination { display: flex; gap: 6px; justify-content: center; padding: 20px 0 4px; }
+
+    /* Search bar */
+    .search-bar { position: relative; }
+    .search-bar input { padding-left: 36px !important; }
+    .search-bar__icon {
+      position: absolute; left: 10px; top: 50%; transform: translateY(-50%);
+      color: var(--silver); pointer-events: none;
+    }
+    .search-bar__icon svg { width: 16px; height: 16px; }
+
+    /* Modal review */
+    .review-grid { display: grid; gap: 10px; }
+    .review-row { display: grid; grid-template-columns: 110px 1fr; gap: 8px; align-items: start; }
+    .review-row__label { font-size: .7rem; letter-spacing: .07em; text-transform: uppercase; color: var(--silver); padding-top: 2px; }
+    .review-row__val { font-size: .88rem; color: var(--mist); }
+    .review-row__val--mono { font-family: var(--font-mono); font-size: .78rem; }
+    .review-row__val--big  { font-family: var(--font-display); font-size: 1.4rem; color: var(--amber); }
+
+    /* Block reason modal */
+    .user-info-grid { display: flex; flex-direction: column; gap: 8px;
+      background: var(--ink-2); border: 1px solid var(--ink-3);
+      border-radius: var(--radius-md); padding: 14px 16px; margin-bottom: 16px; }
+
+    /* Tabs */
+    .admin-tabs { display: flex; gap: 4px; margin-bottom: 20px; flex-wrap: wrap; }
+    .admin-tab {
+      background: var(--ink-1); border: 1px solid var(--ink-3);
+      border-radius: var(--radius-sm); color: var(--silver);
+      padding: 7px 16px; font-size: .8rem; font-family: var(--font-mono);
+      cursor: pointer; transition: all var(--t-fast); white-space: nowrap;
+    }
+    .admin-tab:hover   { border-color: var(--gold); color: var(--gold); }
+    .admin-tab--active { background: var(--gold-dim); border-color: var(--gold); color: var(--gold); }
+
+    /* Empty state for tables */
+    .table-empty { padding: 40px; text-align: center; color: var(--silver); font-style: italic; font-size: .875rem; }
+
+    @media (max-width: 600px) {
+      .suspicious-card { grid-template-columns: auto 1fr; }
+      .suspicious-card__actions { grid-column: 1 / -1; flex-direction: row; }
+      .review-row { grid-template-columns: 80px 1fr; }
+    }
+  </style>
 </head>
 <body>
 
-  <!-- Auth guard overlay -->
-  <div id="admin-auth-guard" class="auth-guard hidden">
-    <div class="auth-guard__box">
-      <div class="auth-guard__icon">🔐</div>
-      <h2 class="auth-guard__title">Адмін-доступ</h2>
-      <p class="auth-guard__sub">Ця сторінка доступна тільки адміністраторам</p>
-      <a href="index.html" class="btn btn--primary">← Повернутися</a>
+<!-- ── Auth guard ─────────────────────────────────────────────────── -->
+<div id="admin-auth-guard" class="auth-guard hidden">
+  <div class="auth-guard__box">
+    <div class="auth-guard__icon">🔐</div>
+    <h2 class="auth-guard__title">Адмін-доступ</h2>
+    <p class="auth-guard__sub">Ця сторінка доступна тільки адміністраторам</p>
+    <a href="index.html" class="btn btn--primary">← Повернутися</a>
+  </div>
+</div>
+
+<div id="admin-app" class="app-wrapper">
+
+  <!-- ── Sidebar ──────────────────────────────────────────────────── -->
+  <aside class="sidebar sidebar--admin">
+    <div class="sidebar__brand">
+      <span class="sidebar__logo">V</span>
+      <span class="sidebar__name">Admin</span>
+    </div>
+    <nav class="sidebar__nav">
+      <a class="nav-item active" data-page="admin-overview" href="#">
+        <svg class="nav-item__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+        <span>Огляд</span>
+      </a>
+      <a class="nav-item" data-page="admin-users" href="#">
+        <svg class="nav-item__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        <span>Користувачі</span>
+        <span class="nav-badge" id="nav-badge-blocked">0</span>
+      </a>
+      <a class="nav-item" data-page="admin-suspicious" href="#">
+        <svg class="nav-item__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        <span>Підозрілі перекази</span>
+        <span class="nav-badge" id="nav-badge-suspicious">0</span>
+      </a>
+      <a class="nav-item" data-page="admin-requests" href="#">
+        <svg class="nav-item__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2M9 5a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2M9 5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2"/></svg>
+        <span>Запити</span>
+        <span class="nav-badge" id="nav-badge-requests">0</span>
+      </a>
+    </nav>
+    <div class="sidebar__bottom">
+      <div class="user-chip">
+        <div class="user-chip__avatar" id="admin-avatar" style="background:linear-gradient(135deg,#ef4444,#b91c1c)">A</div>
+        <div class="user-chip__info">
+          <span class="user-chip__email" id="admin-email">—</span>
+          <span class="user-chip__role" style="color:var(--red)">ADMIN</span>
+        </div>
+      </div>
+      <button class="btn btn--ghost btn--icon" id="admin-btn-logout" title="Вийти">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 16l4-4m0 0-4-4m4 4H7m6 4v1a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3V7a3 3 0 0 1 3-3h4a3 3 0 0 1 3 3v1"/></svg>
+      </button>
+    </div>
+  </aside>
+
+  <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+  <!-- ── Main ─────────────────────────────────────────────────────── -->
+  <main class="main-content">
+    <div class="topbar">
+      <button class="topbar__burger" id="sidebar-toggle" aria-label="Menu"><span></span><span></span><span></span></button>
+      <h1 class="topbar__title" id="admin-page-title">Панель адміністратора</h1>
+      <div style="display:flex;gap:10px;align-items:center">
+        <span class="admin-badge-role">ADMIN</span>
+        <a href="index.html" class="btn btn--outline btn--sm">← Портал</a>
+      </div>
+    </div>
+
+    <!-- ══ Overview ════════════════════════════════════════════════ -->
+    <section id="page-admin-overview" class="page active">
+      <div class="stats-grid stagger" style="grid-template-columns:repeat(auto-fit,minmax(180px,1fr))">
+        <div class="stat-card stat-card--gold">
+          <div class="stat-card__label">Всього користувачів</div>
+          <div class="stat-card__value" id="stat-total-users">—</div>
+          <div class="stat-card__sub" id="stat-users-sub">active / blocked</div>
+        </div>
+        <div class="stat-card stat-card--red">
+          <div class="stat-card__label">Заблоковано</div>
+          <div class="stat-card__value" id="stat-blocked-users" style="color:var(--red)">—</div>
+          <div class="stat-card__sub">Користувачів</div>
+        </div>
+        <div class="stat-card stat-card--amber">
+          <div class="stat-card__label">На перевірці</div>
+          <div class="stat-card__value" id="stat-pending-review" style="color:var(--amber)">—</div>
+          <div class="stat-card__sub">Підозрілих переказів</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card__label">Запити</div>
+          <div class="stat-card__value" id="stat-pending-requests" style="color:var(--gold)">—</div>
+          <div class="stat-card__sub">Очікують розгляду</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card__label">Рахунки</div>
+          <div class="stat-card__value" id="stat-total-accounts">—</div>
+          <div class="stat-card__sub">В системі</div>
+        </div>
+        <div class="stat-card stat-card--green">
+          <div class="stat-card__label">Транзакцій</div>
+          <div class="stat-card__value" id="stat-total-tx" style="color:var(--green)">—</div>
+          <div class="stat-card__sub">Загалом</div>
+        </div>
+      </div>
+
+      <!-- Recent suspicious -->
+      <div class="section-header" style="margin-top:32px">
+        <h2 class="section-title">Підозрілі перекази (нові)</h2>
+        <a href="#" class="btn btn--outline btn--sm" data-page="admin-suspicious">Всі →</a>
+      </div>
+      <div id="overview-suspicious-list" class="suspicious-list">
+        <div class="empty-state skeleton" style="height:100px;border-radius:12px"></div>
+      </div>
+
+      <!-- Recent requests -->
+      <div class="section-header" style="margin-top:28px">
+        <h2 class="section-title">Останні запити</h2>
+        <a href="#" class="btn btn--outline btn--sm" data-page="admin-requests">Всі →</a>
+      </div>
+      <div id="overview-requests-list" class="admin-requests-list">
+        <div class="empty-state skeleton" style="height:80px;border-radius:12px"></div>
+      </div>
+    </section>
+
+    <!-- ══ Users ════════════════════════════════════════════════════ -->
+    <section id="page-admin-users" class="page">
+      <div class="section-header">
+        <h2 class="section-title">Управління користувачами</h2>
+      </div>
+      <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap">
+        <div class="search-bar" style="flex:1;min-width:200px">
+          <div class="search-bar__icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+          </div>
+          <input class="field__input" id="users-search" type="search" placeholder="Пошук за email, ім'ям, телефоном..." style="padding-left:36px" />
+        </div>
+        <select class="field__input field__select field__select--sm" id="users-status-filter" style="width:auto">
+          <option value="">Всі статуси</option>
+          <option value="active">Активні</option>
+          <option value="blocked">Заблоковані</option>
+        </select>
+      </div>
+      <div class="admin-table-wrap">
+        <table class="tx-table admin-table">
+          <thead>
+            <tr>
+              <th>Користувач</th>
+              <th>Телефон</th>
+              <th>Роль</th>
+              <th>Рахунки</th>
+              <th>Статус</th>
+              <th>Реєстрація</th>
+              <th style="text-align:right">Дії</th>
+            </tr>
+          </thead>
+          <tbody id="users-tbody">
+            <tr><td colspan="7" class="table-empty"><div class="skeleton" style="height:40px;border-radius:6px"></div></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="admin-pagination" id="users-pagination"></div>
+    </section>
+
+    <!-- ══ Suspicious Transactions ══════════════════════════════════ -->
+    <section id="page-admin-suspicious" class="page">
+      <div class="section-header">
+        <h2 class="section-title">Підозрілі перекази</h2>
+      </div>
+      <div class="admin-tabs">
+        <button class="admin-tab admin-tab--active" data-status="">Всі</button>
+        <button class="admin-tab" data-status="pending_review">⏳ Очікують</button>
+        <button class="admin-tab" data-status="approved">✓ Схвалені</button>
+        <button class="admin-tab" data-status="rejected">✕ Відхилені</button>
+      </div>
+      <div id="suspicious-list" class="suspicious-list">
+        <div class="empty-state skeleton" style="height:120px;border-radius:12px"></div>
+      </div>
+      <div class="admin-pagination" id="suspicious-pagination"></div>
+    </section>
+
+    <!-- ══ Requests ═════════════════════════════════════════════════ -->
+    <section id="page-admin-requests" class="page">
+      <div class="section-header">
+        <h2 class="section-title">Запити користувачів</h2>
+        <select class="field__input field__select field__select--sm" id="req-status-filter">
+          <option value="">Всі статуси</option>
+          <option value="pending">Очікують</option>
+          <option value="approved">Схвалені</option>
+          <option value="rejected">Відхилені</option>
+        </select>
+      </div>
+      <div id="admin-requests-list" class="admin-requests-list">
+        <div class="empty-state skeleton" style="height:120px;border-radius:12px"></div>
+      </div>
+      <div class="admin-pagination" id="requests-pagination"></div>
+    </section>
+  </main>
+</div>
+
+<!-- ══ Modal: Block/Unblock user ════════════════════════════════════ -->
+<div class="modal-backdrop hidden" id="modal-user-status-backdrop">
+  <div class="modal" id="modal-user-status">
+    <div class="modal__header">
+      <h3 class="modal__title" id="modal-user-title">Блокування користувача</h3>
+      <button class="modal__close" id="close-user-modal">✕</button>
+    </div>
+    <div class="user-info-grid" id="modal-user-info"></div>
+    <div class="field">
+      <label class="field__label" for="block-reason">
+        Причина дії <span style="color:var(--red)">*</span>
+        <span style="font-size:.68rem;color:var(--silver);font-weight:400;text-transform:none;letter-spacing:0"> (обов'язково)</span>
+      </label>
+      <textarea
+        class="field__input field__textarea"
+        id="block-reason"
+        rows="2"
+        placeholder="Наприклад: підозрілі транзакції, порушення правил..."
+        maxlength="500"
+      ></textarea>
+      <div style="font-size:.72rem;color:var(--silver);margin-top:2px">
+        Буде показана заблокованому користувачу
+      </div>
+    </div>
+    <div id="user-modal-error" class="alert alert--error hidden" style="margin-top:10px"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:16px">
+      <button class="btn btn--outline" id="cancel-user-modal">Скасувати</button>
+      <button class="btn btn--primary" id="confirm-user-status">Підтвердити</button>
     </div>
   </div>
+</div>
 
-  <div id="admin-app" class="app-wrapper">
-
-    <!-- Sidebar -->
-    <aside class="sidebar sidebar--admin">
-      <div class="sidebar__brand">
-        <span class="sidebar__logo">V</span>
-        <span class="sidebar__name">Admin</span>
-      </div>
-
-      <nav class="sidebar__nav">
-        <a class="nav-item active" data-page="admin-overview" href="#">
-          <svg class="nav-item__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
-          <span>Огляд</span>
-        </a>
-        <a class="nav-item" data-page="admin-users" href="#">
-          <svg class="nav-item__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-          <span>Користувачі</span>
-        </a>
-        <a class="nav-item" data-page="admin-requests" href="#">
-          <svg class="nav-item__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2M9 5a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2M9 5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2"/></svg>
-          <span>Запити</span>
-          <span class="nav-badge" id="nav-requests-badge"></span>
-        </a>
-      </nav>
-
-      <div class="sidebar__bottom">
-        <div class="user-chip">
-          <div class="user-chip__avatar" id="admin-avatar" style="background:linear-gradient(135deg,#ef4444,#b91c1c)">A</div>
-          <div class="user-chip__info">
-            <span class="user-chip__email" id="admin-email">—</span>
-            <span class="user-chip__role" style="color:var(--red)">ADMIN</span>
-          </div>
-        </div>
-        <button class="btn btn--ghost btn--icon" id="admin-btn-logout" title="Вийти">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 16l4-4m0 0-4-4m4 4H7m6 4v1a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3V7a3 3 0 0 1 3-3h4a3 3 0 0 1 3 3v1"/></svg>
-        </button>
-      </div>
-    </aside>
-
-    <div class="sidebar-overlay" id="sidebar-overlay"></div>
-
-    <!-- Main -->
-    <main class="main-content">
-      <div class="topbar">
-        <button class="topbar__burger" id="sidebar-toggle" aria-label="Menu"><span></span><span></span><span></span></button>
-        <h1 class="topbar__title" id="admin-page-title">Панель адміністратора</h1>
-        <div style="display:flex;gap:10px;align-items:center">
-          <span class="admin-badge-role">ADMIN</span>
-          <button class="btn btn--outline btn--sm" id="topbar-btn-logout">Вийти</button>
-        </div>
-      </div>
-
-      <!-- ── Overview ───────────────────────────────────────────────────── -->
-      <section id="page-admin-overview" class="page active">
-        <div class="stats-grid stagger">
-          <div class="stat-card stat-card--gold">
-            <div class="stat-card__label">Всього користувачів</div>
-            <div class="stat-card__value" id="stat-users-total">—</div>
-            <div class="stat-card__sub">Зареєстровано в системі</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-card__label">Запити очікують</div>
-            <div class="stat-card__value" id="stat-pending-reqs" style="color:var(--amber)">—</div>
-            <div class="stat-card__sub">Потребують розгляду</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-card__label">Схвалено сьогодні</div>
-            <div class="stat-card__value" id="stat-approved-today" style="color:var(--green)">—</div>
-            <div class="stat-card__sub">Запитів оброблено</div>
-          </div>
-        </div>
-
-        <div class="section-header" style="margin-top:32px">
-          <h2 class="section-title">Останні запити</h2>
-          <a href="#" class="btn btn--outline btn--sm" id="view-all-requests">Всі запити →</a>
-        </div>
-        <div id="admin-recent-requests">
-          <div class="empty-state skeleton" style="height:200px;border-radius:12px"></div>
-        </div>
-      </section>
-
-      <!-- ── Users ──────────────────────────────────────────────────────── -->
-      <section id="page-admin-users" class="page">
-        <div class="section-header">
-          <h2 class="section-title">Управління користувачами</h2>
-          <div class="filter-row">
-            <input class="field__input" id="user-search" type="search"
-                   placeholder="Пошук за email або телефоном…"
-                   style="width:240px;padding:7px 12px;font-size:.85rem" />
-          </div>
-        </div>
-        <div class="admin-table-wrap">
-          <table class="tx-table admin-table">
-            <thead>
-              <tr>
-                <th>Email</th>
-                <th>Телефон</th>
-                <th>Роль</th>
-                <th>Статус</th>
-                <th>Дата реєстрації</th>
-                <th>Дії</th>
-              </tr>
-            </thead>
-            <tbody id="users-table-body">
-              <tr><td colspan="6" class="empty-state skeleton" style="height:60px"></td></tr>
-            </tbody>
-          </table>
-        </div>
-      </section>
-
-      <!-- ── Requests ───────────────────────────────────────────────────── -->
-      <section id="page-admin-requests" class="page">
-        <div class="section-header">
-          <h2 class="section-title">Запити користувачів</h2>
-          <div class="filter-row">
-            <select class="field__input field__select field__select--sm" id="req-status-filter">
-              <option value="">Всі статуси</option>
-              <option value="pending">Очікують</option>
-              <option value="approved">Схвалені</option>
-              <option value="rejected">Відхилені</option>
-            </select>
-          </div>
-        </div>
-        <div id="admin-requests-list" class="admin-requests-list">
-          <div class="empty-state skeleton" style="height:120px;border-radius:12px"></div>
-        </div>
-      </section>
-    </main>
-  </div>
-
-  <!-- ── Review Modal ───────────────────────────────────────────────────── -->
-  <div class="modal-backdrop hidden" id="admin-modal-backdrop">
-    <div class="modal" id="modal-review-request">
-      <div class="modal__header">
-        <h3 class="modal__title">Розгляд запиту</h3>
-        <button class="modal__close" id="close-review-modal">✕</button>
-      </div>
-
-      <div class="review-request-info">
-        <div class="review-field">
-          <span class="review-field__label">Тип</span>
-          <span class="review-field__value" id="rv-type">—</span>
-        </div>
-        <div class="review-field">
-          <span class="review-field__label">Користувач</span>
-          <span class="review-field__value" id="rv-user"
-                style="font-family:var(--font-mono);font-size:.8rem;color:var(--gold)">—</span>
-        </div>
-        <div class="review-field">
-          <span class="review-field__label">Рахунок</span>
-          <span class="review-field__value" id="rv-account"
-                style="font-family:var(--font-mono);font-size:.75rem;word-break:break-all">—</span>
-        </div>
-        <div class="review-field">
-          <span class="review-field__label">Повідомлення</span>
-          <span class="review-field__value" id="rv-message" style="white-space:pre-wrap">—</span>
-        </div>
-        <div class="review-field">
-          <span class="review-field__label">Дата</span>
-          <span class="review-field__value" id="rv-date">—</span>
-        </div>
-        <div class="review-field">
-          <span class="review-field__label">Статус</span>
-          <span id="rv-status">—</span>
-        </div>
-      </div>
-
-      <form id="form-review" class="form" style="margin-top:20px">
-        <div class="field">
-          <label class="field__label" for="rv-comment">Коментар адміністратора</label>
-          <textarea class="field__input field__textarea" id="rv-comment" rows="2"
-                    placeholder="Необов'язково…" maxlength="500"></textarea>
-        </div>
-        <div id="rv-error" class="alert alert--error hidden"></div>
-        <div class="review-actions">
-          <button type="button" class="btn btn--outline" id="btn-reject"
-                  style="border-color:var(--red);color:var(--red)">
-            ✕ Відхилити
-          </button>
-          <button type="button" class="btn btn--primary" id="btn-approve"
-                  style="background:linear-gradient(135deg,var(--green),#2da870)">
-            ✓ Схвалити
-          </button>
-        </div>
-      </form>
+<!-- ══ Modal: Review suspicious transaction ═════════════════════════ -->
+<div class="modal-backdrop hidden" id="modal-review-backdrop">
+  <div class="modal" id="modal-review-tx" style="max-width:500px">
+    <div class="modal__header">
+      <h3 class="modal__title">Перевірка підозрілого переказу</h3>
+      <button class="modal__close" id="close-review-tx-modal">✕</button>
+    </div>
+    <div style="background:var(--ink-2);border:1px solid var(--ink-3);border-radius:var(--radius-md);padding:16px;margin-bottom:16px">
+      <div class="review-grid" id="review-tx-info"></div>
+    </div>
+    <div class="field">
+      <label class="field__label" for="review-tx-comment">Коментар адміністратора</label>
+      <textarea class="field__input field__textarea" id="review-tx-comment" rows="2" placeholder="Необов'язково..." maxlength="500"></textarea>
+    </div>
+    <div id="review-tx-error" class="alert alert--error hidden" style="margin-top:10px"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:16px">
+      <button class="btn btn--outline" id="btn-reject-tx" style="border-color:var(--red);color:var(--red)">
+        ✕ Відхилити переказ
+      </button>
+      <button class="btn btn--primary" id="btn-approve-tx" style="background:linear-gradient(135deg,var(--green),#2da870)">
+        ✓ Схвалити переказ
+      </button>
     </div>
   </div>
+</div>
 
-  <!-- Toast -->
-  <div class="toast-container" id="toast-container"></div>
+<!-- ══ Modal: Review user request ═══════════════════════════════════ -->
+<div class="modal-backdrop hidden" id="admin-modal-backdrop">
+  <div class="modal" id="modal-review-request">
+    <div class="modal__header">
+      <h3 class="modal__title">Розгляд запиту</h3>
+      <button class="modal__close" id="close-review-modal">✕</button>
+    </div>
+    <div class="review-request-info" id="review-info">
+      <div class="review-field"><span class="review-field__label">Тип</span><span class="review-field__value" id="rv-type">—</span></div>
+      <div class="review-field"><span class="review-field__label">Рахунок</span><span class="review-field__value" id="rv-account" style="font-family:var(--font-mono);font-size:.8rem">—</span></div>
+      <div class="review-field"><span class="review-field__label">Від</span><span class="review-field__value" id="rv-user-email" style="font-family:var(--font-mono);font-size:.8rem">—</span></div>
+      <div class="review-field"><span class="review-field__label">Повідомлення</span><span class="review-field__value" id="rv-message" style="white-space:pre-wrap">—</span></div>
+      <div class="review-field"><span class="review-field__label">Дата</span><span class="review-field__value" id="rv-date">—</span></div>
+      <div class="review-field"><span class="review-field__label">Статус</span><span id="rv-status">—</span></div>
+    </div>
+    <form id="form-review" class="form" style="margin-top:16px">
+      <div class="field">
+        <label class="field__label" for="rv-comment">Коментар адміністратора</label>
+        <textarea class="field__input field__textarea" id="rv-comment" rows="2" placeholder="Необов'язково..." maxlength="500"></textarea>
+      </div>
+      <div id="rv-error" class="alert alert--error hidden"></div>
+      <div class="review-actions">
+        <button type="button" class="btn btn--outline" id="btn-reject" style="border-color:var(--red);color:var(--red)">✕ Відхилити</button>
+        <button type="button" class="btn btn--primary" id="btn-approve" style="background:linear-gradient(135deg,var(--green),#2da870)">✓ Схвалити</button>
+      </div>
+    </form>
+  </div>
+</div>
 
-  <!--
-    ПОРЯДОК СКРИПТІВ ВАЖЛИВИЙ:
-    1. api.js      — HTTP-хелпери (Api object)
-    2. store.js    — Store object
-    3. ui.js       — UI object (statusBadge, formatDate, toast тощо) ← БУВ ВІДСУТНІЙ!
-    4. admin.js    — логіка адмін-панелі
-  -->
-  <script src="js/api.js"></script>
-  <script src="js/store.js"></script>
-  <script src="js/ui.js"></script>
-  <script src="js/admin.js"></script>
+<div class="toast-container" id="toast-container"></div>
+
+<script src="js/api.js"></script>
+<script src="js/store.js"></script>
+<script src="js/admin.js"></script>
 </body>
 </html>
