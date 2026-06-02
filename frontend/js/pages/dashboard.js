@@ -1,4 +1,3 @@
-
 const DashboardPage = (() => {
 
   async function load() {
@@ -8,13 +7,33 @@ const DashboardPage = (() => {
     try {
       const accounts = await Api.getUserAccounts(user.id);
 
-      // Stats
-      const total = accounts.reduce((s, a) => s + (a.currency === 'UAH' ? a.balance : 0), 0);
+      // ── Статистика балансів по валютах ──────────────────────────────
       const active = accounts.filter(a => a.status === 'active').length;
-      document.getElementById('stat-total').textContent    = UI.formatMoney(total, 'UAH');
       document.getElementById('stat-accounts').textContent = active;
 
-      // Mini account cards
+      // Групуємо баланси по валютах
+      const balances = {};
+      accounts.forEach(a => {
+        if (!balances[a.currency]) balances[a.currency] = 0;
+        balances[a.currency] += a.balance;
+      });
+
+      const sym = { UAH: '₴', USD: '$', EUR: '€' };
+      const currencies = ['UAH', 'USD', 'EUR'].filter(c => balances[c] !== undefined);
+
+      if (currencies.length === 0) {
+        document.getElementById('stat-total').textContent = '0,00 ₴';
+      } else if (currencies.length === 1) {
+        const c = currencies[0];
+        document.getElementById('stat-total').textContent = UI.formatMoney(balances[c], c);
+      } else {
+        // Кілька валют — показуємо кожну на новому рядку
+        document.getElementById('stat-total').innerHTML = currencies
+          .map(c => `<div style="font-size:${currencies.length > 2 ? '1.1rem' : '1.3rem'};line-height:1.4">${UI.formatMoney(balances[c], c)}</div>`)
+          .join('');
+      }
+
+      // ── Картки рахунків ─────────────────────────────────────────────
       const row = document.getElementById('dash-accounts-list');
       if (accounts.length === 0) {
         row.innerHTML = '<div class="empty-state">Рахунки не знайдено. Додайте перший рахунок.</div>';
@@ -23,7 +42,6 @@ const DashboardPage = (() => {
         row.classList.add('stagger');
         accounts.forEach(acc => {
           const card = UI.renderBankCard(acc, () => {
-            // Navigate to accounts page on click
             document.querySelector('[data-page="accounts"]').click();
           });
           card.style.animation = 'fade-up .4s ease both';
@@ -31,27 +49,62 @@ const DashboardPage = (() => {
         });
       }
 
-      // Recent transactions (first account)
+      // ── Останні транзакції з УСІХ рахунків ─────────────────────────
       const txList = document.getElementById('dash-tx-list');
-      if (accounts.length > 0) {
-        try {
-          const { items } = await Api.getAccountTx(accounts[0].id, 5, 0);
-          if (items.length === 0) {
-            txList.innerHTML = '<div class="empty-state">Транзакцій немає</div>';
-          } else {
-            txList.innerHTML = '';
-            items.forEach(tx => txList.appendChild(_txItem(tx, accounts[0].id)));
+      const myAccountIds = accounts.map(a => a.id);
 
-            // Last tx stat
-            const last = items[0];
-            document.getElementById('stat-last-tx').textContent =
-              (last.is_income ? '+' : '-') + UI.formatMoney(last.amount, last.currency);
-            document.getElementById('stat-last-tx-date').textContent =
-              UI.formatDateShort(last.created_at);
-          }
-        } catch {}
-      } else {
+      if (accounts.length === 0) {
         txList.innerHTML = '<div class="empty-state">Немає рахунків для відображення транзакцій</div>';
+        return;
+      }
+
+      try {
+        // Завантажуємо транзакції з усіх рахунків паралельно
+        const results = await Promise.allSettled(
+          accounts.map(acc => Api.getAccountTx(acc.id, 20, 0))
+        );
+
+        // Збираємо унікальні транзакції
+        const seen = new Set();
+        const allTx = [];
+        results.forEach(r => {
+          if (r.status === 'fulfilled') {
+            (r.value.items || []).forEach(tx => {
+              if (!seen.has(tx.id)) {
+                seen.add(tx.id);
+                allTx.push(tx);
+              }
+            });
+          }
+        });
+
+        // Сортуємо за датою (найновіші першими)
+        allTx.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+        // Беремо топ-5
+        const recent = allTx.slice(0, 5);
+
+        if (recent.length === 0) {
+          txList.innerHTML = '<div class="empty-state">Транзакцій немає</div>';
+          document.getElementById('stat-last-tx').textContent = '—';
+          document.getElementById('stat-last-tx-date').textContent = '—';
+        } else {
+          txList.innerHTML = '';
+          recent.forEach(tx => txList.appendChild(_txItem(tx, myAccountIds)));
+
+          // Останній переказ — найновіша транзакція де юзер відправник або отримувач
+          const last = recent[0];
+          const lastIsOut = myAccountIds.includes(last.from_account_id) && !myAccountIds.includes(last.to_account_id)
+            || (myAccountIds.includes(last.from_account_id) && myAccountIds.includes(last.to_account_id) && last.from_account_id !== last.to_account_id);
+          // Спрощена логіка: якщо from_account_id належить нам — витрата
+          const isOutgoing = myAccountIds.includes(last.from_account_id);
+          document.getElementById('stat-last-tx').textContent =
+            (isOutgoing ? '-' : '+') + UI.formatMoney(last.amount, last.currency);
+          document.getElementById('stat-last-tx-date').textContent =
+            UI.formatDateShort(last.created_at);
+        }
+      } catch (err) {
+        txList.innerHTML = '<div class="empty-state">Помилка завантаження транзакцій</div>';
       }
 
     } catch (err) {
@@ -59,8 +112,9 @@ const DashboardPage = (() => {
     }
   }
 
-  function _txItem(tx, myAccountId) {
-    const isOut = tx.from_account_id === myAccountId;
+  function _txItem(tx, myAccountIds) {
+    // isOut = гроші ВИХОДЯТЬ з наших рахунків
+    const isOut = myAccountIds.includes(tx.from_account_id);
     const div = document.createElement('div');
     div.className = 'tx-item';
     div.innerHTML = `

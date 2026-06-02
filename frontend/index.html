@@ -13,6 +13,7 @@
   <link rel="stylesheet" href="css/layout.css" />
   <link rel="stylesheet" href="css/pages.css" />
   <link rel="stylesheet" href="css/animations.css" />
+   <link rel="stylesheet" href="css/filters.css" />
   <link rel="stylesheet" href="css/mobile.css" />
   <link rel="stylesheet" href="css/blocked.css" />
   <link rel="stylesheet" href="css/profile.css" />
@@ -97,16 +98,16 @@
 
     <!-- Login -->
     <div id="page-login" class="auth-card active">
-      <h2 class="auth-card__title">Вхід до системи</h2>
+      <h2 class="auth-card__title" data-i18n="auth.login.title">Вхід до системи</h2>
       <p class="auth-card__sub">Welcome back</p>
       <form id="form-login" class="form" novalidate>
         <div class="field">
-          <label class="field__label" for="login-email">Email</label>
+          <label class="field__label" for="login-email" data-i18n="auth.login.email">Email</label>
           <input class="field__input" id="login-email" type="email" placeholder="your@email.com" autocomplete="email" required />
           <span class="field__error" id="login-email-err"></span>
         </div>
         <div class="field">
-          <label class="field__label" for="login-password">Пароль / Password</label>
+          <label class="field__label" for="login-password" data-i18n="auth.login.password">Пароль</label>
           <div class="field__password-wrap">
             <input class="field__input" id="login-password" type="password" placeholder="••••••••" autocomplete="current-password" required />
             <button type="button" class="field__eye-btn" id="login-password-eye" aria-label="Показати пароль">
@@ -118,7 +119,7 @@
         </div>
         <div id="login-error" class="alert alert--error hidden"></div>
         <button class="btn btn--primary btn--full" type="submit">
-          <span class="btn__text">Увійти</span>
+          <span class="btn__text" data-i18n="auth.login.btn">Увійти</span>
           <span class="btn__loader hidden"></span>
         </button>
       </form>
@@ -127,19 +128,19 @@
 
     <!-- Register -->
     <div id="page-register" class="auth-card">
-      <h2 class="auth-card__title">Реєстрація</h2>
+      <h2 class="auth-card__title" data-i18n="auth.register.title">Реєстрація</h2>
       <p class="auth-card__sub">Create your account</p>
       <form id="form-register" class="form" novalidate>
 
         <!-- Ім'я та прізвище -->
         <div class="field-row">
           <div class="field">
-            <label class="field__label" for="reg-first-name">Ім'я / First name</label>
+            <label class="field__label" for="reg-first-name" data-i18n="auth.register.first_name">Ім'я</label>
             <input class="field__input" id="reg-first-name" type="text" placeholder="Іван" autocomplete="given-name" required />
             <span class="field__error" id="reg-first-name-err"></span>
           </div>
           <div class="field">
-            <label class="field__label" for="reg-last-name">Прізвище / Last name</label>
+            <label class="field__label" for="reg-last-name" data-i18n="auth.register.last_name">Прізвище</label>
             <input class="field__input" id="reg-last-name" type="text" placeholder="Петренко" autocomplete="family-name" required />
             <span class="field__error" id="reg-last-name-err"></span>
           </div>
@@ -151,14 +152,14 @@
           <span class="field__error" id="reg-email-err"></span>
         </div>
         <div class="field">
-          <label class="field__label" for="reg-phone">Телефон / Phone</label>
+          <label class="field__label" for="reg-phone" data-i18n="auth.register.phone">Телефон</label>
           <input class="field__input" id="reg-phone" type="tel" placeholder="+380991234567" autocomplete="tel" required />
           <span class="field__error" id="reg-phone-err"></span>
         </div>
 
         <!-- Пароль зі слайдером та кнопкою ока -->
         <div class="field">
-          <label class="field__label" for="reg-password">Пароль / Password</label>
+          <label class="field__label" for="reg-password" data-i18n="auth.register.password">Пароль</label>
           <div class="field__password-wrap">
             <input class="field__input" id="reg-password" type="password" placeholder="мін. 8 символів" autocomplete="new-password" required />
             <button type="button" class="field__eye-btn" id="reg-password-eye" aria-label="Показати пароль">
@@ -209,7 +210,7 @@
         <div id="reg-error" class="alert alert--error hidden"></div>
         <div id="reg-success" class="alert alert--success hidden"></div>
         <button class="btn btn--primary btn--full" type="submit">
-          <span class="btn__text">Зареєструватись</span>
+          <span class="btn__text" data-i18n="auth.register.btn">Зареєструватись</span>
           <span class="btn__loader hidden"></span>
         </button>
       </form>
@@ -234,36 +235,36 @@
 
         <a class="nav-item active" data-page="dashboard" href="#">
           <svg class="nav-item__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
-          <span>Огляд</span>
+          <span data-i18n="nav.dashboard">Огляд</span>
         </a>
         <a class="nav-item" data-page="accounts" href="#">
           <svg class="nav-item__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>
-          <span>Рахунки</span>
+          <span data-i18n="nav.accounts">Рахунки</span>
         </a>
         <a class="nav-item" data-page="transfer" href="#">
           <svg class="nav-item__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M7 16V4m0 0L3 8m4-4 4 4M17 8v12m0 0 4-4m-4 4-4-4"/></svg>
-          <span>Переказ</span>
+          <span data-i18n="nav.transfer">Переказ</span>
         </a>
         <a class="nav-item" data-page="transactions" href="#">
           <svg class="nav-item__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2M9 5a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2M9 5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2"/></svg>
-          <span>Транзакції</span>
+          <span data-i18n="nav.transactions">Транзакції</span>
         </a>
         <a class="nav-item" data-page="requests" href="#">
           <svg class="nav-item__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 0 1-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
-          <span>Запити</span>
+          <span data-i18n="nav.requests">Запити</span>
         </a>
         <a class="nav-item" data-page="profile" href="#">
            <svg class="nav-item__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
             <circle cx="12" cy="7" r="4"/>
           </svg>
-          <span>Кабінет</span>
+          <span data-i18n="nav.profile">Кабінет</span>
         </a>
       </nav>
 
       <a href="admin.html" class="nav-item" id="nav-admin" style="display:none;margin:0 12px 8px;border-top:1px solid var(--ink-3);padding-top:12px;color:var(--red)">
         <svg class="nav-item__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0 1 12 2.944a11.955 11.955 0 0 1-8.618 3.04A12.02 12.02 0 0 0 3 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
-        <span>Адмін панель</span>
+        <span data-i18n="nav.admin">Адмін панель</span>
       </a>
       <div class="sidebar__bottom">
         <div class="user-chip" id="sidebar-user">
@@ -285,7 +286,7 @@
         <button class="topbar__burger" id="sidebar-toggle" aria-label="Menu">
           <span></span><span></span><span></span>
         </button>
-        <h1 class="topbar__title" id="page-title">Огляд</h1>
+        <h1 class="topbar__title" id="page-title" data-i18n="nav.dashboard">Огляд</h1>
         <div class="topbar__lang">
           <button class="lang-btn active" data-lang="uk">UA</button>
           <button class="lang-btn" data-lang="en">EN</button>
@@ -296,32 +297,32 @@
       <section id="page-dashboard" class="page active">
         <div class="stats-grid" id="stats-grid">
           <div class="stat-card stat-card--gold">
-            <div class="stat-card__label">Загальний баланс</div>
+            <div class="stat-card__label" data-i18n="dash.total_balance">Загальний баланс</div>
             <div class="stat-card__value" id="stat-total">0.00 ₴</div>
-            <div class="stat-card__sub">Всі рахунки</div>
+            <div class="stat-card__sub" data-i18n="dash.all_accounts">Всі рахунки</div>
           </div>
           <div class="stat-card">
-            <div class="stat-card__label">Рахунків</div>
+            <div class="stat-card__label" data-i18n="dash.accounts_count">Рахунків</div>
             <div class="stat-card__value" id="stat-accounts">0</div>
-            <div class="stat-card__sub">Активних</div>
+            <div class="stat-card__sub" data-i18n="dash.accounts_active">Активних</div>
           </div>
           <div class="stat-card">
-            <div class="stat-card__label">Останній переказ</div>
+            <div class="stat-card__label" data-i18n="dash.last_tx">Останній переказ</div>
             <div class="stat-card__value" id="stat-last-tx">—</div>
             <div class="stat-card__sub" id="stat-last-tx-date">—</div>
           </div>
         </div>
 
         <div class="section-header">
-          <h2 class="section-title">Мої рахунки</h2>
-          <button class="btn btn--outline btn--sm" id="dash-add-account">+ Додати</button>
+          <h2 class="section-title" data-i18n="dash.my_accounts">Мої рахунки</h2>
+          <button class="btn btn--outline btn--sm" id="dash-add-account" data-i18n="dash.add">+ Додати</button>
         </div>
         <div class="cards-row" id="dash-accounts-list">
           <div class="empty-state">Рахунки не знайдено</div>
         </div>
 
         <div class="section-header">
-          <h2 class="section-title">Останні транзакції</h2>
+          <h2 class="section-title" data-i18n="dash.recent_tx">Останні транзакції</h2>
         </div>
         <div class="tx-list" id="dash-tx-list">
           <div class="empty-state">Транзакцій немає</div>
@@ -331,8 +332,8 @@
       <!-- Accounts -->
       <section id="page-accounts" class="page">
         <div class="section-header">
-          <h2 class="section-title">Банківські рахунки</h2>
-          <button class="btn btn--primary btn--sm" id="btn-open-add-account">+ Новий рахунок</button>
+          <h2 class="section-title" data-i18n="acc.title">Банківські рахунки</h2>
+          <button class="btn btn--primary btn--sm" id="btn-open-add-account" data-i18n="acc.new">+ Новий рахунок</button>
         </div>
         <div class="accounts-grid" id="accounts-grid">
           <div class="empty-state">Рахунки не знайдено</div>
@@ -343,11 +344,11 @@
       <section id="page-transfer" class="page">
         <div class="transfer-container">
           <div class="transfer-card">
-            <h2 class="transfer-card__title">Переказ коштів</h2>
-            <p class="transfer-card__sub">Instant transfer between accounts</p>
+            <h2 class="transfer-card__title" data-i18n="tf.title">Переказ коштів</h2>
+            <p class="transfer-card__sub" data-i18n="tf.sub">Миттєвий переказ між рахунками</p>
             <form id="form-transfer" class="form" novalidate>
               <div class="field">
-                <label class="field__label" for="tf-from">З рахунку / From</label>
+                <label class="field__label" for="tf-from" data-i18n="tf.from">З рахунку</label>
                 <select class="field__input field__select" id="tf-from" required>
                   <option value="">— оберіть рахунок —</option>
                 </select>
@@ -357,7 +358,7 @@
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 5v14m7-7-7 7-7-7"/></svg>
               </div>
              <div class="field">
-               <label class="field__label" for="tf-to">Номер картки отримувача (16 цифр)</label>
+               <label class="field__label" for="tf-to" data-i18n="tf.to">Номер картки отримувача (16 цифр)</label>
                 <input class="field__input"
                   id="tf-to"
                   type="text"
@@ -368,7 +369,7 @@
                 <span class="field__error" id="tf-to-err"></span>
               </div>
               <div class="field">
-                <label class="field__label" for="tf-amount">Сума / Amount</label>
+                <label class="field__label" for="tf-amount" data-i18n="tf.amount">Сума</label>
                 <div class="field__prefix-wrap">
                   <span class="field__prefix" id="tf-currency-badge">₴</span>
                   <input class="field__input field__input--prefixed" id="tf-amount" type="number" min="0.01" step="0.01" placeholder="0.00" required />
@@ -376,13 +377,13 @@
                 <span class="field__error" id="tf-amount-err"></span>
               </div>
               <div class="field">
-                <label class="field__label" for="tf-desc">Призначення (необов'язково)</label>
+                <label class="field__label" for="tf-desc" data-i18n="tf.desc">Призначення (необов'язково)</label>
                 <input class="field__input" id="tf-desc" type="text" placeholder="За що переказ..." maxlength="255" />
               </div>
               <div id="tf-error" class="alert alert--error hidden"></div>
               <div id="tf-success" class="alert alert--success hidden"></div>
               <button class="btn btn--primary btn--full" type="submit">
-                <span class="btn__text">Виконати переказ</span>
+                <span class="btn__text" data-i18n="tf.btn">Виконати переказ</span>
                 <span class="btn__loader hidden"></span>
               </button>
             </form>
@@ -393,26 +394,22 @@
       <!-- Transactions -->
       <section id="page-transactions" class="page">
         <div class="section-header">
-          <h2 class="section-title">Транзакції</h2>
-          <div class="filter-row">
-            <select class="field__input field__select field__select--sm" id="tx-account-filter">
-              <option value="">Всі рахунки</option>
-            </select>
-          </div>
+          <h2 class="section-title" data-i18n="tx.title">Транзакції</h2>
         </div>
         <div class="tx-table-wrap">
           <table class="tx-table">
             <thead>
               <tr>
-                <th>Дата</th>
-                <th>Тип</th>
-                <th>Опис</th>
-                <th>Статус</th>
-                <th class="text-right">Сума</th>
+                <th data-i18n="tx.col.date">Дата</th>
+                <th data-i18n="tx.col.id">№ ID</th>
+                <th data-i18n="tx.col.type">Тип</th>
+                <th data-i18n="tx.col.desc">Опис</th>
+                <th data-i18n="tx.col.status">Статус</th>
+                <th class="text-right" data-i18n="tx.col.amount">Сума</th>
               </tr>
             </thead>
             <tbody id="tx-table-body">
-              <tr><td colspan="5" class="empty-state">Транзакцій немає</td></tr>
+              <tr><td colspan="6" class="empty-state">Транзакцій немає</td></tr>
             </tbody>
           </table>
         </div>
@@ -422,8 +419,8 @@
       <!-- Requests -->
       <section id="page-requests" class="page">
         <div class="section-header">
-          <h2 class="section-title">Мої запити</h2>
-          <button class="btn btn--primary btn--sm" id="btn-open-add-request">+ Новий запит</button>
+          <h2 class="section-title" data-i18n="req.title">Мої запити</h2>
+          <button class="btn btn--primary btn--sm" id="btn-open-add-request" data-i18n="req.new">+ Новий запит</button>
         </div>
         <div class="requests-list" id="requests-list">
           <div class="empty-state">Запитів немає</div>
@@ -444,7 +441,7 @@
     <!-- Add Account Modal -->
     <div class="modal hidden" id="modal-add-account">
       <div class="modal__header">
-        <h3 class="modal__title">Новий рахунок</h3>
+        <h3 class="modal__title" data-i18n="acc.modal.title">Новий рахунок</h3>
         <button class="modal__close" data-close-modal="modal-add-account">✕</button>
       </div>
       <form id="form-add-account" class="form" novalidate>
@@ -472,39 +469,39 @@
           <span class="field__error" id="acc-balance-err"></span>
         </div>
         <div id="acc-error" class="alert alert--error hidden"></div>
-        <button class="btn btn--primary btn--full" type="submit">Створити рахунок</button>
+        <button class="btn btn--primary btn--full" type="submit" data-i18n="acc.modal.btn">Створити рахунок</button>
       </form>
     </div>
 
     <!-- Add Request Modal -->
     <div class="modal hidden" id="modal-add-request">
       <div class="modal__header">
-        <h3 class="modal__title">Новий запит</h3>
+        <h3 class="modal__title" data-i18n="req.modal.title">Новий запит</h3>
         <button class="modal__close" data-close-modal="modal-add-request">✕</button>
       </div>
       <form id="form-add-request" class="form" novalidate>
         <div class="field">
-          <label class="field__label" for="req-account">Рахунок</label>
+          <label class="field__label" for="req-account" data-i18n="req.modal.acc">Рахунок</label>
           <select class="field__input field__select" id="req-account" required>
             <option value="">— оберіть рахунок —</option>
           </select>
           <span class="field__error" id="req-account-err"></span>
         </div>
         <div class="field">
-          <label class="field__label" for="req-type">Тип запиту</label>
+          <label class="field__label" for="req-type" data-i18n="req.modal.type">Тип запиту</label>
           <select class="field__input field__select" id="req-type" required>
             <option value="UNBLOCK">Розблокування / Unblock</option>
           </select>
         </div>
         <div class="field">
-          <label class="field__label" for="req-message">Повідомлення</label>
+          <label class="field__label" for="req-message" data-i18n="req.modal.msg">Повідомлення</label>
           <textarea class="field__input field__textarea" id="req-message" rows="3" placeholder="Опишіть причину запиту..." required maxlength="1000"></textarea>
           <span class="field__error" id="req-message-err"></span>
         </div>
         <div id="req-error" class="alert alert--error hidden"></div>
         <div id="req-success" class="alert alert--success hidden"></div>
         <button class="btn btn--primary btn--full" type="submit">
-          <span class="btn__text">Надіслати запит</span>
+          <span class="btn__text" data-i18n="req.modal.btn">Надіслати запит</span>
           <span class="btn__loader hidden"></span>
         </button>
       </form>
@@ -618,6 +615,7 @@ const Api = (() => {
 
 </script>
   <script src="js/store.js"></script>
+  <script src="js/i18n.js"></script>
   <script src="js/ui.js"></script>
   <script src="js/pages/auth.js"></script>
   <script src="js/pages/dashboard.js"></script>
@@ -827,6 +825,7 @@ const AccountsPage = (() => {
   <script src="js/pages/transactions.js"></script>
   <script src="js/pages/requests.js"></script>
   <script src="js/pages/profile.js"></script>
+  <script src="js/export_pdf.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>

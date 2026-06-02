@@ -1,14 +1,15 @@
-"""
-Сервісний шар для управління користувачами.
-"""
+import datetime
 from typing import Dict, Optional
+
 from fastapi import Depends
-from fastapi.responses import JSONResponse
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
-from app.core.exceptions import InvalidCredentials, UserNotFound
+from app.core.exceptions import (
+    InvalidCredentials, UserNotFound, UserInactive, TokenExpired,
+    WrongCurrentPassword,
+)
 from app.core.logging_config import get_logger
-from app.core.security import verify_password, create_access_token
+from app.core.security import verify_password, create_access_token, decode_access_token
 from app.db.database import get_db
 from app.models.user_models import UserCreate, UserResponse, UserUpdate
 from app.repositories.user_repository import UserRepository
@@ -17,95 +18,102 @@ logger = get_logger(__name__)
 
 
 class UserService:
-    """Сервіс для управління користувачами."""
 
-    def __init__(self, repo: UserRepository, db: Optional[AsyncIOMotorDatabase] = None):
+    def __init__(self, repo: UserRepository, db: AsyncIOMotorDatabase):
         self.repo = repo
-        self._db = db
+        self.db = db
 
     async def create_user(self, user: UserCreate) -> UserResponse:
-        """Реєструє нового користувача."""
         user_in_db = await self.repo.create(user)
-        logger.info("Зареєстровано: email=%s id=%s", user.email, user_in_db.id)
+        logger.info("Registered: email=%s id=%s", user.email, user_in_db.id)
         return UserResponse.model_validate(user_in_db)
 
     async def authenticate(self, email: str, password: str) -> Dict:
-        """
-        Автентифікує користувача.
-        Заблокований може увійти — але /users/me поверне 403.
-        """
+        """Authenticate user and return access + refresh tokens."""
         user = await self.repo.get_by_email(email)
-        if not user or not verify_password(password, user.password_hash):
-            logger.warning("Невдала спроба входу: email=%s", email)
+        success = bool(user and verify_password(password, user.password_hash))
+
+        if not success:
+            logger.warning("Failed login attempt: email=%s", email)
             raise InvalidCredentials()
 
-        token = create_access_token({"sub": user.id, "role": user.role})
-        logger.info("Вхід: id=%s, status=%s", user.id, user.status)
-        return {"access_token": token, "token_type": "bearer"}
+        if user.status != "active":
+            logger.warning("Blocked account login attempt: id=%s", user.id)
+            raise UserInactive()
 
-    async def get_me(self, user_id: str):
-        """
-        Повертає профіль поточного юзера.
-        Якщо заблокований — JSONResponse 403 з причиною.
-        """
-        user = await self.repo.get_by_id(user_id)
-        if not user:
-            raise UserNotFound()
+        access_token = create_access_token({"sub": user.id, "role": user.role})
+        refresh_token = create_access_token(
+            {"sub": user.id, "role": user.role, "type": "refresh"},
+            expires_delta=datetime.timedelta(days=7),
+        )
 
-        if user.status == "blocked":
-            return JSONResponse(
-                status_code=403,
-                content={
-                    "blocked": True,
-                    "id": user.id,
-                    "email": user.email,
-                    "status": "blocked",
-                    "block_reason": user.block_reason or "Причину не вказано",
-                    "message": "Ваш обліковий запис заблоковано адміністратором.",
-                    "detail": "Обліковий запис заблоковано",
-                },
-            )
+        await self.db.refresh_tokens.insert_one({
+            "token": refresh_token,
+            "user_id": user.id,
+            "created_at": datetime.datetime.utcnow(),
+        })
 
-        return UserResponse.model_validate(user)
+        logger.info("Успішний вхід: id=%s", user.id)
+        return {"access_token": access_token, "refresh_token": refresh_token, "token_type": "bearer"}
+
+    async def refresh(self, refresh_token: str) -> Dict:
+        """Issue new access token using a valid refresh token."""
+        payload = decode_access_token(refresh_token)
+        if not payload or payload.get("type") != "refresh":
+            raise TokenExpired()
+
+        doc = await self.db.refresh_tokens.find_one({"token": refresh_token})
+        if not doc:
+            raise TokenExpired()
+
+        user = await self.repo.get_by_id(payload.get("sub", ""))
+        if not user or user.status != "active":
+            raise TokenExpired()
+
+        new_access = create_access_token({"sub": user.id, "role": user.role})
+        return {"access_token": new_access, "token_type": "bearer"}
+
+    async def logout(self, refresh_token: str) -> None:
+        """Invalidate refresh token."""
+        await self.db.refresh_tokens.delete_one({"token": refresh_token})
+        logger.info("Logout: refresh token invalidated")
 
     async def get_user(self, user_id: str) -> UserResponse:
-        """Повертає дані користувача за ID."""
         user = await self.repo.get_by_id(user_id)
         if not user:
             raise UserNotFound()
         return UserResponse.model_validate(user)
 
     async def update_user(self, user_id: str, update_data: UserUpdate) -> UserResponse:
-        """Оновлює профіль."""
+        """Update user profile. Verifies current password when changing password."""
+        if update_data.password:
+            if not update_data.current_password:
+                raise WrongCurrentPassword()
+
+            user_in_db = await self.repo.get_by_id(user_id)
+            if not user_in_db:
+                raise UserNotFound()
+
+            if not verify_password(update_data.current_password, user_in_db.password_hash):
+                raise WrongCurrentPassword()
+
+            from app.core.security import hash_password
+            update_data = update_data.model_copy(
+                update={"password_hash": hash_password(update_data.password)}
+            )
+
         user = await self.repo.update(user_id, update_data)
         if not user:
             raise UserNotFound()
         return UserResponse.model_validate(user)
 
-    async def refresh(self, refresh_token: str) -> Dict:
-        """
-        Оновлює access token.
-        ВАЖЛИВО: використовує `is not None` — Motor DB не підтримує bool().
-        """
-        if self._db is None:
-            raise InvalidCredentials()
+    async def delete_user(self, user_id: str) -> None:
+        deleted = await self.repo.delete(user_id)
+        if not deleted:
+            raise UserNotFound()
 
-        doc = await self._db.refresh_tokens.find_one({"token": refresh_token})
-        if not doc:
-            raise InvalidCredentials()
 
-        user = await self.repo.get_by_id(str(doc["user_id"]))
-        if not user:
-            raise InvalidCredentials()
-
-        token = create_access_token({"sub": user.id, "role": user.role})
-        return {"access_token": token, "token_type": "bearer"}
-
-    async def logout(self, refresh_token: str) -> None:
-        """Видаляє refresh token."""
-        if self._db is not None:
-            await self._db.refresh_tokens.delete_one({"token": refresh_token})
-
+# --- Dependency injection ---
 
 def get_user_repository(db: AsyncIOMotorDatabase = Depends(get_db)) -> UserRepository:
     return UserRepository(db.users)

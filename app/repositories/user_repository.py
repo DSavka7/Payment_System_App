@@ -96,9 +96,27 @@ class UserRepository:
         except InvalidId:
             raise InvalidObjectId("user_id")
 
+        # Виключаємо службові поля — вони не зберігаються в колекції напряму
+        payload = update_data.model_dump(
+            exclude_unset=True,
+            exclude={"password", "current_password"},
+        )
+
+        # Якщо сервіс передав password_hash — зберігаємо його
+        if hasattr(update_data, "password_hash") and update_data.password_hash:
+            payload["password_hash"] = update_data.password_hash
+
+        if not payload:
+            # Нічого оновлювати — повертаємо поточний документ
+            doc = await self.collection.find_one({"_id": oid})
+            if not doc:
+                return None
+            doc["id"] = str(doc.pop("_id"))
+            return UserInDB.model_validate(doc)
+
         result = await self.collection.find_one_and_update(
             {"_id": oid},
-            {"$set": update_data.model_dump(exclude_unset=True)},
+            {"$set": payload},
             return_document=True,
         )
         if not result:

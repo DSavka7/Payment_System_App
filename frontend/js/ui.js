@@ -1,4 +1,3 @@
-
 const UI = (() => {
 
   // ── Toast ──────────────────────────────────────────────────────────────────
@@ -25,19 +24,16 @@ const UI = (() => {
 
   function closeModal(id) {
     document.getElementById(id).classList.add('hidden');
-    // hide backdrop if no modals open
     const open = document.querySelectorAll('.modal:not(.hidden)');
     if (!open.length) document.getElementById('modal-backdrop').classList.add('hidden');
   }
 
-  // Close on backdrop click
   document.getElementById('modal-backdrop').addEventListener('click', (e) => {
     if (e.target === e.currentTarget) {
       document.querySelectorAll('.modal:not(.hidden)').forEach(m => closeModal(m.id));
     }
   });
 
-  // Close buttons
   document.querySelectorAll('[data-close-modal]').forEach(btn => {
     btn.addEventListener('click', () => closeModal(btn.dataset.closeModal));
   });
@@ -86,35 +82,62 @@ const UI = (() => {
 
   function formatDate(dateStr) {
     if (!dateStr) return '—';
-    const d = new Date(dateStr);
-    return d.toLocaleDateString('uk-UA', { day: '2-digit', month: 'short', year: 'numeric' })
-      + ' ' + d.toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit' });
+    const d    = new Date(dateStr);
+    const lang = (typeof I18n !== 'undefined') ? I18n.getLang() : 'uk';
+    const loc  = lang === 'en' ? 'en-GB' : 'uk-UA';
+    return d.toLocaleDateString(loc, { day: '2-digit', month: 'short', year: 'numeric' })
+      + ' ' + d.toLocaleTimeString(loc, { hour: '2-digit', minute: '2-digit' });
   }
 
   function formatDateShort(dateStr) {
     if (!dateStr) return '—';
-    const d = new Date(dateStr);
-    return d.toLocaleDateString('uk-UA', { day: '2-digit', month: 'short' });
+    const d    = new Date(dateStr);
+    const lang = (typeof I18n !== 'undefined') ? I18n.getLang() : 'uk';
+    const loc  = lang === 'en' ? 'en-GB' : 'uk-UA';
+    return d.toLocaleDateString(loc, { day: '2-digit', month: 'short' });
+  }
+
+  // ── Translatable labels ────────────────────────────────────────────────────
+  // Всі рядки йдуть через I18n — якщо недоступний, фолбек на UA
+  function _t(key, fallback) {
+    return (typeof I18n !== 'undefined') ? I18n.t(key) : fallback;
   }
 
   function typeLabel(type) {
-    const MAP = { transfer: 'Переказ', payment: 'Оплата', income: 'Надходження' };
+    const MAP = {
+      transfer: _t('tx.type.transfer_out', 'Переказ'),
+      payment:  _t('tx.type.transfer_out', 'Оплата'),
+      income:   _t('tx.type.income',       'Надходження'),
+    };
     return MAP[type] || type;
   }
 
+  function typeLabelDirectional(type, isIncome) {
+    if (type === 'transfer' || type === 'income') {
+      return isIncome
+        ? _t('tx.type.transfer_in',  'Надходження')
+        : _t('tx.type.transfer_out', 'Переказ');
+    }
+    return typeLabel(type);
+  }
+
   function requestTypeLabel(type) {
-    const MAP = { BLOCK: 'Блокування', UNBLOCK: 'Розблокування', LIMIT_CHANGE: 'Зміна ліміту' };
+    const MAP = {
+      BLOCK:        _t('req.type.block',        'Блокування'),
+      UNBLOCK:      _t('req.type.unblock',       'Розблокування'),
+      LIMIT_CHANGE: _t('req.type.limit_change',  'Зміна ліміту'),
+    };
     return MAP[type] || type;
   }
 
   function statusBadge(status) {
     const MAP = {
-      success:  ['success', 'Успішно'],
-      active:   ['success', 'Активний'],
-      blocked:  ['error',   'Заблоковано'],
-      pending:  ['pending', 'Очікує'],
-      approved: ['success', 'Схвалено'],
-      rejected: ['error',   'Відхилено'],
+      success:  ['success', _t('status.success',  'Успішно')],
+      active:   ['success', _t('status.active',   'Активний')],
+      blocked:  ['error',   _t('status.blocked',  'Заблоковано')],
+      pending:  ['pending', _t('status.pending',  'Очікує')],
+      approved: ['success', _t('status.approved', 'Схвалено')],
+      rejected: ['error',   _t('status.rejected', 'Відхилено')],
     };
     const [cls, label] = MAP[status] || ['pending', status];
     return `<span class="badge badge--${cls}">${label}</span>`;
@@ -125,13 +148,15 @@ const UI = (() => {
     const el = document.createElement('div');
     el.className = `bank-card${acc.status === 'blocked' ? ' bank-card--blocked' : ''}`;
     el.dataset.id = acc.id;
+    const activeLabel  = _t('status.active',  'Active');
+    const blockedLabel = _t('status.blocked', 'Blocked');
     el.innerHTML = `
       <div class="bank-card__chip"></div>
       <div class="bank-card__number">${acc.card_number || '**** **** **** ****'}</div>
       <div class="bank-card__footer">
         <div>
           <div class="bank-card__balance">${formatMoney(acc.balance, acc.currency)}</div>
-          <div class="bank-card__status">${acc.status === 'active' ? '● Active' : '○ Blocked'}</div>
+          <div class="bank-card__status">${acc.status === 'active' ? `● ${activeLabel}` : `○ ${blockedLabel}`}</div>
         </div>
         <div class="bank-card__currency">${acc.currency}</div>
       </div>
@@ -144,7 +169,7 @@ const UI = (() => {
     toast, openModal, closeModal,
     setLoading, clearErrors, showError, showAlert, hideAlert,
     formatMoney, formatDate, formatDateShort,
-    typeLabel, requestTypeLabel, statusBadge,
+    typeLabel, typeLabelDirectional, requestTypeLabel, statusBadge,
     renderBankCard,
   };
 })();

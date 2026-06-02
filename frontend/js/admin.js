@@ -105,6 +105,8 @@ const adminPatch = (path, body) => adminFetch(path, { method: 'PATCH', body: JSO
 // ══════════════════════════════════════════════════════════════════
 // STATE
 // ══════════════════════════════════════════════════════════════════
+let currentAdminId = null; // ID поточного адміна — захист від самоблокування
+
 const State = {
   stats: null,
   usersPage: 0,    usersLimit: 15,  usersSearch: '', usersStatus: '',  usersTotal: 0,
@@ -140,6 +142,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const user = await adminGet('/users/me');
     Store.setUser(user);
     if (user.role !== 'ADMIN') { showGuard(); return; }
+    currentAdminId = user.id; // зберігаємо щоб не давати заблокувати себе
     document.getElementById('admin-email').textContent  = user.email;
     document.getElementById('admin-avatar').textContent = (user.email || 'A')[0].toUpperCase();
   } catch {
@@ -153,6 +156,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   bindReviewTxModal();
   bindReviewRequestModal();
   bindFilters();
+
+  // PDF report button
+  document.getElementById('admin-pdf-btn')?.addEventListener('click', () => {
+    AdminPDF.generateReport();
+  });
 
   await loadOverview();
 });
@@ -329,6 +337,7 @@ function renderUsersTable(users) {
   tbody.innerHTML = '';
   users.forEach(u => {
     const isBlocked = u.status === 'blocked';
+    const isSelf    = u.id === currentAdminId;
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td>
@@ -342,16 +351,18 @@ function renderUsersTable(users) {
       <td class="tx-date-cell">${AdminUI.formatDateShort(u.created_at)}</td>
       <td>
         <div class="action-btns">
+          ${isSelf ? '' : `
           <button class="action-btn ${isBlocked ? 'action-btn--success' : 'action-btn--danger'}" data-action="toggle-status">
             ${isBlocked ? '🔓 Розблокувати' : '🔒 Заблокувати'}
-          </button>
+          </button>`}
         </div>
       </td>
     `;
-    tr.querySelector('[data-action="toggle-status"]').addEventListener('click', (e) => { e.stopPropagation(); openUserStatusModal(u); });
-    // Click anywhere on row to open details
-    tr.style.cursor = 'pointer';
-    tr.addEventListener('click', () => openUserDetails(u.id));
+    if (!isSelf) {
+      tr.querySelector('[data-action="toggle-status"]').addEventListener('click', (e) => { e.stopPropagation(); openUserStatusModal(u); });
+      tr.style.cursor = 'pointer';
+      tr.addEventListener('click', () => openUserDetails(u.id));
+    }
     tbody.appendChild(tr);
   });
 }
@@ -367,6 +378,7 @@ function bindUserModal() {
 }
 
 function openUserStatusModal(user) {
+  if (user.id === currentAdminId) return; // не можна заблокувати себе
   State.pendingUserId     = user.id;
   State.pendingUserAction = user.status === 'active' ? 'blocked' : 'active';
 
@@ -961,6 +973,7 @@ function _renderUserDetails(u) {
         </div>
       </div>
       <div style="margin-top:14px;display:flex;gap:8px;justify-content:flex-end">
+        ${u.id === currentAdminId ? '' : `
         <button
           id="details-toggle-status-btn"
           class="btn btn--sm ${isBlocked ? 'btn--outline' : 'btn--outline'}"
@@ -971,7 +984,7 @@ function _renderUserDetails(u) {
           data-accounts="${u.accounts.length}"
         >
           ${isBlocked ? '🔓 Розблокувати користувача' : '🔒 Заблокувати користувача'}
-        </button>
+        </button>`}
       </div>
     </div>
 

@@ -61,6 +61,20 @@ class UserUpdate(BaseModel):
     last_name: Optional[str] = Field(None, min_length=2, max_length=50)
     status: Optional[str] = None
 
+    # Зміна пароля
+    current_password: Optional[str] = Field(None, description="Поточний пароль для підтвердження")
+    password: Optional[str] = Field(None, min_length=8, description="Новий пароль")
+
+    # Внутрішнє поле — встановлюється сервісом після хешування
+    password_hash: Optional[str] = Field(None, exclude=True)
+
+    @field_validator("password")
+    @classmethod
+    def check_new_password_strength(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return v
+        return validate_password_strength(v)
+
 
 class UserInDB(UserBase):
     """Внутрішня схема користувача з даними з бази даних."""

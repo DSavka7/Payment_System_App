@@ -1,6 +1,3 @@
-"""
-Роутер для управління транзакціями.
-"""
 from typing import List
 
 from fastapi import APIRouter, Depends, Query, status
@@ -12,48 +9,30 @@ from app.services.transaction_service import TransactionService, get_transaction
 router = APIRouter(prefix="/transactions", tags=["transactions"])
 
 
-@router.post(
-    "/",
-    response_model=TransactionResponse,
-    status_code=status.HTTP_201_CREATED,
-    summary="Створення нової транзакції",
-)
+@router.post("/", response_model=TransactionResponse, status_code=status.HTTP_201_CREATED, summary="Create transaction")
 async def create_transaction(
     transaction: TransactionCreate,
-    _: dict = Depends(get_active_user),
+    _: str = Depends(get_active_user),
     service: TransactionService = Depends(get_transaction_service),
 ) -> TransactionResponse:
-    """Створює нову транзакцію між рахунками."""
     return await service.create_transaction(transaction)
 
 
-@router.get(
-    "/{tx_id}",
-    response_model=TransactionResponse,
-    summary="Отримання транзакції за ID",
-)
-async def get_transaction(
-    tx_id: str,
-    _: dict = Depends(get_active_user),
-    service: TransactionService = Depends(get_transaction_service),
-) -> TransactionResponse:
-    """Повертає деталі транзакції за її ідентифікатором."""
-    return await service.get_transaction(tx_id)
-
-
-@router.get(
-    "/account/{account_id}",
-    summary="Список транзакцій рахунку з пагінацією",
-)
+@router.get("/account/{account_id}", summary="Get account transactions with pagination")
 async def get_account_transactions(
     account_id: str,
-    limit: int = Query(50, ge=1, le=100, description="Кількість записів на сторінку"),
-    offset: int = Query(0, ge=0, description="Зміщення для пагінації"),
-    _: dict = Depends(get_active_user),
+    limit: int = Query(50, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+    _: str = Depends(get_active_user),
     service: TransactionService = Depends(get_transaction_service),
 ):
-    """
-    Повертає список транзакцій рахунку з підтримкою пагінації (limit/offset).
-    Відповідь містить поля: items, total, limit, offset.
-    """
     return await service.get_account_transactions(account_id, limit=limit, offset=offset)
+
+
+@router.get("/{tx_id}", response_model=TransactionResponse, summary="Get transaction by ID")
+async def get_transaction(
+    tx_id: str,
+    _: str = Depends(get_active_user),
+    service: TransactionService = Depends(get_transaction_service),
+) -> TransactionResponse:
+    return await service.get_transaction(tx_id)

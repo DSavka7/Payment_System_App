@@ -1,7 +1,10 @@
-﻿const AuthPage = (() => {
+﻿/**
+ * auth.js — оригінальна версія без I18n та без двокрокової реєстрації.
+ * Використовує Api.register() — стандартний POST /users/
+ */
+const AuthPage = (() => {
 
-  // ── Перемикання між сторінками ──────────────────────────────────────
-
+  // ── Перемикання між сторінками ──────────────────────────────────────────────
   document.getElementById('go-register').addEventListener('click', (e) => {
     e.preventDefault();
     document.getElementById('page-login').classList.remove('active');
@@ -14,8 +17,7 @@
     document.getElementById('page-login').classList.add('active');
   });
 
-  // ── Вхід ───────────────────────────────────────────────────────────
-
+  // ── Вхід ────────────────────────────────────────────────────────────────────
   document.getElementById('form-login').addEventListener('submit', async (e) => {
     e.preventDefault();
     const form  = e.currentTarget;
@@ -23,52 +25,27 @@
     const pass  = document.getElementById('login-password').value;
 
     UI.clearErrors(form);
-    UI.hideAlert('login-error');
 
     let valid = true;
-    if (!email) { UI.showError('login-email', 'Введіть email'); valid = false; }
+    if (!email) { UI.showError('login-email',    'Введіть email'); valid = false; }
     if (!pass)  { UI.showError('login-password', 'Введіть пароль'); valid = false; }
     if (!valid) return;
 
     UI.setLoading(form, true);
-
     try {
-      // 1. Отримуємо токен
       const tokens = await Api.login(email, pass);
       Store.setAuth(tokens);
-
-      // 2. Отримуємо профіль
-      const meResult = await Api.getMe();
-
-      // 3. Заблокований — сторінка блокування
-      if (meResult && meResult.blocked === true) {
-        Store.set('blockedUserId', meResult.id);
-        Store.set('blockedEmail',  meResult.email);
-        App.showBlocked(meResult);
-        return;
-      }
-
-      // 4. ADMIN → одразу перенаправляємо на адмін-панель
-      if (meResult.role === 'ADMIN') {
-        Store.setUser(meResult);
-        window.location.href = 'admin.html';
-        return;
-      }
-
-      // 5. Звичайний користувач → головний додаток
-      Store.setUser(meResult);
+      const user = await Api.getMe();
+      Store.setUser(user);
       App.showApp();
-
     } catch (err) {
-      Store.clear();
       UI.showAlert('login-error', err.message);
     } finally {
       UI.setLoading(form, false);
     }
   });
 
-  // ── Показати / приховати пароль (вхід) ─────────────────────────────
-
+  // ── Показати / приховати пароль (вхід) ──────────────────────────────────────
   document.getElementById('login-password-eye').addEventListener('click', function () {
     const input    = document.getElementById('login-password');
     const isHidden = input.type === 'password';
@@ -77,8 +54,7 @@
     document.getElementById('login-eye-hide').style.display = isHidden ? ''     : 'none';
   });
 
-  // ── Слайдер надійності пароля ───────────────────────────────────────
-
+  // ── Слайдер надійності пароля ───────────────────────────────────────────────
   const PASSWORD_RULES = [
     { id: 'req-len',     test: (v) => v.length >= 8 },
     { id: 'req-upper',   test: (v) => /[A-Z]/.test(v) },
@@ -96,13 +72,16 @@
       document.getElementById(rule.id).classList.toggle('pwd-reqs__item--met', met);
       return acc + (met ? 1 : 0);
     }, 0);
+
     const display = value.length === 0 ? 0 : Math.min(5, score + (value.length >= 12 ? 1 : 0));
     const final   = value.length === 0 ? 0 : Math.max(1, display);
+
     for (let i = 1; i <= 5; i++) {
       const bar = document.getElementById(`pwd-bar-${i}`);
       bar.className = 'pwd-strength__bar' +
         (i <= final ? ` pwd-strength__bar--${STRENGTH_MODS[final]}` : '');
     }
+
     const labelEl = document.getElementById('pwd-strength-label');
     labelEl.textContent = value.length ? STRENGTH_LABELS[final] : '';
     labelEl.className   = 'pwd-strength__label' +
@@ -113,8 +92,7 @@
     updatePasswordStrength(this.value);
   });
 
-  // ── Показати / приховати пароль (реєстрація) ────────────────────────
-
+  // ── Показати / приховати пароль (реєстрація) ────────────────────────────────
   document.getElementById('reg-password-eye').addEventListener('click', function () {
     const input    = document.getElementById('reg-password');
     const isHidden = input.type === 'password';
@@ -123,15 +101,16 @@
     document.getElementById('eye-icon-hide').style.display = isHidden ? ''     : 'none';
   });
 
-  function isValidName(v) {
-    return v.length >= 2 && /^[A-Za-zА-ЯҐЄІЇа-яґєії'\-\s]+$/.test(v);
-  }
-  function allPasswordRulesMet(v) {
-    return PASSWORD_RULES.every(r => r.test(v));
+  // ── Допоміжні валідатори ─────────────────────────────────────────────────────
+  function isValidName(value) {
+    return value.length >= 2 && /^[A-Za-zА-ЯҐЄІЇа-яґєії'\-\s]+$/.test(value);
   }
 
-  // ── Реєстрація ──────────────────────────────────────────────────────
+  function allPasswordRulesMet(value) {
+    return PASSWORD_RULES.every((rule) => rule.test(value));
+  }
 
+  // ── Реєстрація ──────────────────────────────────────────────────────────────
   document.getElementById('form-register').addEventListener('submit', async (e) => {
     e.preventDefault();
     const form      = e.currentTarget;
@@ -142,12 +121,29 @@
     const pass      = document.getElementById('reg-password').value;
 
     UI.clearErrors(form);
+
     let valid = true;
-    if (!isValidName(firstName)) { UI.showError('reg-first-name', 'Лише літери, мін. 2 символи'); valid = false; }
-    if (!isValidName(lastName))  { UI.showError('reg-last-name',  'Лише літери, мін. 2 символи'); valid = false; }
-    if (!email)                  { UI.showError('reg-email',      'Введіть email');               valid = false; }
-    if (!/^\+380\d{9}$/.test(phone)) { UI.showError('reg-phone', 'Формат: +380XXXXXXXXX');       valid = false; }
-    if (!allPasswordRulesMet(pass))  { UI.showError('reg-password', 'Пароль не відповідає вимогам'); valid = false; }
+
+    if (!isValidName(firstName)) {
+      UI.showError('reg-first-name', "Лише літери, мін. 2 символи");
+      valid = false;
+    }
+    if (!isValidName(lastName)) {
+      UI.showError('reg-last-name', "Лише літери, мін. 2 символи");
+      valid = false;
+    }
+    if (!email) {
+      UI.showError('reg-email', 'Введіть email');
+      valid = false;
+    }
+    if (!/^\+380\d{9}$/.test(phone)) {
+      UI.showError('reg-phone', 'Формат: +380XXXXXXXXX');
+      valid = false;
+    }
+    if (!allPasswordRulesMet(pass)) {
+      UI.showError('reg-password', 'Пароль не відповідає всім вимогам');
+      valid = false;
+    }
     if (!valid) return;
 
     UI.setLoading(form, true);
@@ -155,11 +151,19 @@
     UI.hideAlert('reg-success');
 
     try {
-      await Api.register({ email, phone, password: pass, first_name: firstName, last_name: lastName });
+      await Api.register({
+        email,
+        phone,
+        password:   pass,
+        first_name: firstName,
+        last_name:  lastName,
+      });
       UI.showAlert('reg-success', 'Акаунт створено! Тепер увійдіть у систему.');
       form.reset();
       updatePasswordStrength('');
-      PASSWORD_RULES.forEach(r => document.getElementById(r.id).classList.remove('pwd-reqs__item--met'));
+      PASSWORD_RULES.forEach((r) => {
+        document.getElementById(r.id).classList.remove('pwd-reqs__item--met');
+      });
       setTimeout(() => {
         document.getElementById('page-register').classList.remove('active');
         document.getElementById('page-login').classList.add('active');
